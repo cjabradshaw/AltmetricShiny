@@ -1,0 +1,505 @@
+# Altmetrics R Shiny app
+# Corey Bradshaw
+# Flinders University
+
+## remove everything
+rm(list = ls())
+
+# load libraries
+library(shiny)
+library(rAltmetric)
+library(magrittr)
+library(purrr)
+library(dplyr)
+library(rcrossref)
+library(ggplot2)
+library(ggpubr)
+
+## call functions
+source(file.path("./", "AICc.R"), local=T)
+source(file.path("./", "deltaIC.R"), local=T)
+source(file.path("./", "weightIC.R"), local=T)
+source(file.path("./", "linregER.R"), local=T)
+source(file.path("./", "alm.R"), local=T)
+source(file.path("./", "AltFunc.R"), local=T)
+
+ui <- fluidPage(
+  
+  tags$head(
+    tags$meta(name="google-site-verification", content="bVQ54bgpekDeCqy30pOSnGOMgbNXXV1AdwIoMRXSAAI")
+  ),
+  
+  # title of app
+  titlePanel("Altmetric fetch, sort & analyse"),
+  
+  wellPanel(style = "background: azure",
+    tags$a(href="https://github.com/cjabradshaw/AltmetricShiny", tags$img(height = 200, src = "altmetric_logo.png", style="float:right")),
+    tags$p(style="font-family:Avenir", tags$i(class="fab fa-r-project", title="R Project"),"Shiny App by", tags$a(href="https://globalecologyflinders.com/people/#CJAB", "Corey Bradshaw "),
+           tags$a(href = "mailto:corey.bradshaw@flinders.edu.au","(",tags$i(class="far fa-envelope"),"e-mail"),";",
+           tags$a(href = "https://github.com/cjabradshaw", tags$i(class="fab fa-github",title="Github"),"Github)")),
+    tags$h4(style="font-family:Avenir", "Preamble"),
+    tags$p(style="font-family:Avenir", "Ever wanted to collate the", tags$a(href="https://www.altmetric.com/about-altmetrics/what-are-altmetrics/","Altmetric"),
+    "data for your articles, but couldn't be bothered to do it manually? I've made the process substantially easier by designing this",
+    tags$i(class="fab fa-r-project"),"Shiny app. All you need to do is collate a list of",tags$a(href="https://www.doi.org", "'digital object identifiers'"),
+    "('doi') for the articles of interest, and the app does it all for you. The app also produces outputs that plot the distribution of not only the relevant
+    Altmetric scores, but also the rank percentiles for each article relative to articles of the same age in the journal, and to all articles in the journal
+    with Altmetric data."), tags$p(style="font-family:Avenir", "The app also gives you the option of fetching citation data from",
+    tags$a(href="https://www.crossref.org", "Crossref"), "to examine the patterns between Altmetric and citation trends."),
+    tags$p(style="font-family:Avenir", "This", tags$i(class="fab fa-github"), "Github ",
+           tags$a(href = "https://github.com/cjabradshaw/EpsilonIndexShiny", "repository"),
+           "provides all the 'under-the-bonnet'",tags$i(class="fab fa-r-project"),"code for the app."),
+  
+    tags$h4(style="font-family:Avenir", "Instructions"),
+    tags$ol(tags$li(tags$p(style="font-family:Avenir", "Create a delimited text file of", tags$strong("exactly the same format"), "as the example file in this",
+           tags$a(href="https://github.com/cjabradshaw/EpsilonIndex/blob/main/datasample.csv","repository", tags$i(class="far fa-file")), ",
+           although you can specify the delimit character (", tags$em("comma"),", ", tags$em("space"),", ", tags$em("tab"),").")),
+           tags$li(tags$p(style="font-family:Avenir", "Load your delimited text file in the app by clicking the",tags$i(class="fas fa-file-import"),
+           tags$strong("choose file"), "button.")),
+           tags$li(tags$p(style="font-family:Avenir", "Select whether you want to include Crossref citation data (",
+           tags$i(class="fas fa-bookmark"), tags$strong("include Crossref citation data?"), "). Downloading these data will increase processing time.")),
+           tags$a(href="https://globalecologyflinders.com/", tags$img(height = 100, src = "GEL Logo Kaurna transparent.png", style="float:right",
+                                                               title="Global Ecology @ Flinders University")),
+           tags$li(tags$p(style="font-family:Avenir", "Choose how you want the output file to be", tags$i(class="fas fa-sort"),
+           "sorted by selecting one of the four choices in the drop-down menu:", tags$strong("Altmetric score"),",",tags$strong("context rank percentile"),",",
+           tags$strong("all-time rank percentile"),", or",tags$strong("publication date"),".")),
+           tags$li(tags$p(style="font-family:Avenir", "Click the", tags$i(class="fas fa-network-wired"), tags$strong("fetch data"), "button.")),
+           tags$li(tags$p(style="font-family:Avenir", "Download the results table as a tab-delimited", tags$i(class="fas fa-file-alt"), "file by clicking the", tags$i(class="fas fa-download"),
+           tags$strong("download"), "button.")))
+  ),
+  
+  tabsetPanel(id="tabs",
+              tabPanel(value="tab1", title="fetch & process data",
+                       
+                       sidebarLayout(
+                         sidebarPanel(
+                           wellPanel(style = "background: LightCyan",
+                             fileInput("file1", label=tags$p(tags$i(class='fas fa-file-import'),"choose delimited file with doi data (1 column)"),
+                                       multiple=F, buttonLabel="choose file", placeholder="no file selected"),
+                             tags$hr(),
+                             radioButtons("sep",label=tags$p(tags$i(class="fas fa-file-csv"),"separator"),choices=c(comma=',',space="",tab="\t"), inline=T),
+                             checkboxInput("header1", "header?", TRUE),
+                             tags$hr(),
+                             radioButtons("CRcitations", label=tags$p(tags$i(class='fas fa-bookmark'), "include Crossref citation data?"), inline=T,
+                                          choiceNames = list((icon("fas fa-thumbs-down")), (icon("fas fa-thumbs-up"))), choiceValues = list("no","yes")),
+                             tags$hr(),
+                             selectInput("sortind",label=tags$p(tags$i(class='fas fa-sort'), "choose sort index"), 
+                                         c("Altmetric score"="as","context rank percentile"="cp","all-time rank percentile"="ap","publication date"="d")),
+                             tags$hr(),
+                             actionButton("fetchButton", label="fetch data",icon=shiny::icon("fas fa-network-wired")),
+                             br(),
+                             tags$small(style="font-family:Avenir", "(refresh page to clear data)"),
+                             tags$hr(),
+                             downloadButton('downloadData', 'download',icon = shiny::icon("download"))
+                           ),
+                         ),
+                         
+                         # open main panel
+                         mainPanel(style = "background: GhostWhite",
+                           
+                           fluidRow(
+                             tags$div(id = "firstOutput", 
+                                      h3("input data"),
+                                      dataTableOutput("table1")) 
+                           ),
+                           
+                           fluidRow(
+                             tags$div(id = "placeholder") # the dynamic UI will be inserted relative to this placeholder
+                           ),
+
+                         ) # close mainPanel
+                         
+                       ) # sidebarLayout
+              ), # end tab1
+              
+              tabPanel(value="tab2", title=tags$strong("highlights"), style = "background: MintCream",
+                       tags$br(),
+                       tags$p(style="font-family:Avenir", tags$strong("Some summary highlights from your sample:")),
+                       
+                       mainPanel(
+                         tags$br(),
+                         htmlOutput('Narticles'),
+                         tags$br(),
+                         htmlOutput('topAS'),
+                         htmlOutput('topASartDetails'),
+                         tags$br(),
+                         htmlOutput('topCP'),
+                         tags$br(),
+                         htmlOutput('topAP'),
+                         tags$br(),
+                         tags$head(tags$style("#Narticles{font-family:Avenir}"
+                         )),
+                         tags$head(tags$style("#topASartDetails{font-family:Avenir}"
+                         )),
+                         tags$head(tags$style("#topAS{font-family:Avenir}"
+                         )),
+                         tags$head(tags$style("#topCP{font-family:Avenir}"
+                         )),
+                         tags$head(tags$style("#topAP{font-family:Avenir}"
+                         )),
+                         tags$br()
+                         
+                       )
+                       
+              ), # end tab2
+              
+              tabPanel(value="tab3", title=tags$strong("histograms"), style = "background: MintCream",
+                       tags$br(),
+                       tags$p(style="font-family:Avenir", "These histograms show the distribution of three different Altmetrics:"),
+                       tags$ul(tags$li(tags$p(style="font-family:Avenir", tags$strong("A: Altmetric score"), " — this is the Altmetric '",
+                                              tags$a(href="https://www.altmetric.com/about-our-data/the-donut-and-score/", "attention score"),
+                                              "' as an indicator of the volume of attention an article has received (higher scores = more attention.")),
+                                       tags$li(tags$p(style="font-family:Avenir", tags$strong("B: Context-rank percentile score"),
+                                                      " — this is the percentile of the Altmetric",
+                                                      tags$a(href="https://www.altmetric.com/about-our-data/the-donut-and-score/",
+                                                             "attention score"), tags$a(href="https://help.altmetric.com/support/solutions/articles/6000233313-putting-the-altmetric-attention-score-in-context","rank"),
+                                                              "in context of all articles of the same age in the journal. Here, low percentiles = top.")),
+                                       tags$li(tags$p(style="font-family:Avenir", tags$strong("C: All time-rank percentile"), " — this is the percentile of the Altmetric",
+                                                      tags$a(href="https://www.altmetric.com/about-our-data/the-donut-and-score/",
+                                                             "attention score"), tags$a(href="https://help.altmetric.com/support/solutions/articles/6000233313-putting-the-altmetric-attention-score-in-context","rank"),
+                                                              "in context of all articles with Altmetric data ever published in the journal. Here, low percentiles = top."))
+                      ), # end ul
+                      
+                       mainPanel(
+                         tags$br(),
+                         tags$p(style="font-family:Avenir","In each panel below, the median metric is indicated in the panel's title and also shown as a red, dashed vertical line."),
+                         plotOutput(width="150%","histplots"),
+                         tags$br()
+                       )
+                       
+                       
+              ), # end tab3
+              
+              tabPanel(value="tab4", title=tags$strong("temporal trends"), style = "background: MintCream",
+                       tags$br(),
+                       tags$p(style="font-family:Avenir", "The following time plots show the temporal patterns in the three different Altmetrics:"),
+                       tags$ul(tags$li(tags$p(style="font-family:Avenir", tags$strong("A: Altmetric score"), " — this is the Altmetric '",
+                                              tags$a(href="https://www.altmetric.com/about-our-data/the-donut-and-score/", "attention score"),
+                                              "' as an indicator of the volume of attention an article has received (higher scores = more attention.")),
+                               tags$li(tags$p(style="font-family:Avenir", tags$strong("B: Context-rank percentile score"),
+                                              " — this is the percentile of the Altmetric",
+                                              tags$a(href="https://www.altmetric.com/about-our-data/the-donut-and-score/",
+                                                     "attention score"), tags$a(href="https://help.altmetric.com/support/solutions/articles/6000233313-putting-the-altmetric-attention-score-in-context","rank"),
+                                              "in context of all articles of the same age in the journal. Here, low percentiles = top.")),
+                               tags$li(tags$p(style="font-family:Avenir", tags$strong("C: All time-rank percentile"), " — this is the percentile of the Altmetric",
+                                              tags$a(href="https://www.altmetric.com/about-our-data/the-donut-and-score/",
+                                                     "attention score"), tags$a(href="https://help.altmetric.com/support/solutions/articles/6000233313-putting-the-altmetric-attention-score-in-context","rank"),
+                                              "in context of all articles with Altmetric data ever published in the journal. Here, low percentiles = top."))
+                       ), # end ul
+                       
+                       mainPanel(
+                         tags$br(),
+                         tags$p(style="font-family:Avenir","The information-theoretic evidence ratio (ER) for a linear trend and the adjusted R",
+                                tags$sup("2"), "for each index are:"),
+                         htmlOutput('ERASt'),
+                         htmlOutput('ERCPt'),
+                         htmlOutput('ERAPt'),
+                         tags$head(tags$style("#ERASt{font-family:Avenir}"
+                                  )),
+                         tags$head(tags$style("#ERCPt{font-family:Avenir}"
+                         )),
+                         tags$head(tags$style("#ERAPt{font-family:Avenir}"
+                         )),
+                         tags$br(),
+                         tags$p(style="font-family:Avenir","In each panel below, the loess trend is indicated by the blue line, and the linear trend by a
+                                red dashed line."),
+                         tags$br(),
+                         plotOutput(height="1000px", "timeplots")
+                       )
+                       
+              ), # end tab4
+              
+              tabPanel(value="tab5", title=tags$strong("citation analysis"), style = "background: MintCream",
+                       tags$br(),
+                       tags$p(style="font-family:Avenir", "If you selected to include Crossref citation data, the following plots show the power-law relationship
+                              between article citations and each of the three different Altmetrics:"),
+                       tags$ul(tags$li(tags$p(style="font-family:Avenir", tags$strong("A: Altmetric score"), " — this is the Altmetric '",
+                                              tags$a(href="https://www.altmetric.com/about-our-data/the-donut-and-score/", "attention score"),
+                                              "' as an indicator of the volume of attention an article has received (higher scores = more attention.")),
+                               tags$li(tags$p(style="font-family:Avenir", tags$strong("B: Context-rank percentile score"),
+                                              " — this is the percentile of the Altmetric",
+                                              tags$a(href="https://www.altmetric.com/about-our-data/the-donut-and-score/",
+                                                     "attention score"), tags$a(href="https://help.altmetric.com/support/solutions/articles/6000233313-putting-the-altmetric-attention-score-in-context","rank"),
+                                              "in context of all articles of the same age in the journal. Here, low percentiles = top.")),
+                               tags$li(tags$p(style="font-family:Avenir", tags$strong("C: All time-rank percentile"), " — this is the percentile of the Altmetric",
+                                              tags$a(href="https://www.altmetric.com/about-our-data/the-donut-and-score/",
+                                                     "attention score"), tags$a(href="https://help.altmetric.com/support/solutions/articles/6000233313-putting-the-altmetric-attention-score-in-context","rank"),
+                                              "in context of all articles with Altmetric data ever published in the journal. Here, low percentiles = top."))
+                       ), # end ul
+                       
+                       mainPanel(
+                         tags$br(),
+                         tags$p(style="font-family:Avenir","The information-theoretic evidence ratio (ER) for a linear trend and the adjusted R",
+                                tags$sup("2"), "for each index are:"),
+                         htmlOutput('ERASc'),
+                         htmlOutput('ERCPc'),
+                         htmlOutput('ERAPc'),
+                         tags$head(tags$style("#ERASc{font-family:Avenir}"
+                         )),
+                         tags$head(tags$style("#ERCPc{font-family:Avenir}"
+                         )),
+                         tags$head(tags$style("#ERAPc{font-family:Avenir}"
+                         )),
+                         tags$br(),
+                         tags$p(style="font-family:Avenir","In each panel below, the linear trend is indicated by a red dashed line."),
+                         tags$br(),
+                         plotOutput(height="1000px", "citationplots")
+                       )
+                       
+              ), # end tab5
+              
+             tabPanel(value="tab6", title=tags$strong("output table descriptors"), style = "background: MintCream",
+                      tags$br(),
+                      tags$a(href="https://flinders.edu.au/", tags$img(height = 100, src = "F_V_CMYK.png", style="float:right",title="Flinders University")),
+                      tags$h2(style="font-family:Avenir", "Description of columns in the output file"),
+                       
+                       tags$ol(tags$li(tags$p(style="font-family:Avenir", tags$strong("first author"), "(COLUMN", tags$em("firstAu"),
+                                                     ") — first author of the article")),
+                               tags$li(tags$p(style="font-family:Avenir", tags$strong("article title"), "(COLUMN", tags$em("title"),
+                                              ") — the first 20 characters of the article's title")),
+                               tags$li(tags$p(style="font-family:Avenir", tags$strong("digital object identifier"), "(COLUMN", tags$em("doi"),
+                                               ") — the article's", tags$a(href="https://www.doi.org", "doi"))),
+                               tags$a(href="https://epicaustralia.org.au/", tags$img(height = 150, src = "CABAHlogo.png",
+                                                                                     style="float:right",
+                                                                                     title="ARC Centre of Excellence for Australian Biodiversity and Heritage")),
+                               tags$li(tags$p(style="font-family:Avenir", tags$strong("publication date"), "(COLUMN", tags$em("PublDate"),
+                                                     ") — DD/MM/YY date of the article's publication")),
+                               tags$li(tags$p(style="font-family:Avenir", tags$strong("Altmetric attention score"), "(COLUMN", tags$em("AltmScore"),
+                                                     ") — the downloaded Altmetric",
+                                                     tags$a(href="https://www.altmetric.com/about-our-data/the-donut-and-score/", "attention score"),
+                                                     "of the article")),
+                               tags$li(tags$p(style="font-family:Avenir", tags$strong("'In-context' rank percentile (by age)"), "(COLUMN", tags$em("rnkCxtPc"),
+                                              ") — the percentile of the Altmetric rank relative to all articles in the journal of the same age")),
+                               tags$li(tags$p(style="font-family:Avenir", tags$strong("'In-context' rank percentile (all time)"), "(COLUMN", tags$em("rnkCxtPc"),
+                                              ") — the percentile of the Altmetric rank relative to all articles in the journal")),
+                               tags$li(tags$p(style="font-family:Avenir", tags$strong("Number of Crossref citations"), "(COLUMN", tags$em("CRcites"),
+                                              ") — total number of citations to date according to", tags$a(href="https://www.crossref.org", "Crossref"),
+                                              "(if Crossref citations selected)")),
+                               tags$li(tags$p(style="font-family:Avenir", tags$strong("Number of Crossref citations/year"), "(COLUMN", tags$em("CRcitesYr"),
+                                              ") — total number of citations/year to date according to", tags$a(href="https://www.crossref.org", "Crossref"),
+                                              "(if Crossref citations selected)")),
+                               tags$a(href="https://github.com/cjabradshaw/EpsilonIndexShiny/blob/main/LICENSE",
+                                      tags$img(height = 50, src = "GNU GPL3.png", style="float:right", title="GNU General Public Licence v3.0")),
+                               tags$br()
+                       ) # end ol
+
+         ) # end tab6
+  
+  ) # end tabsetPanel
+  
+  
+) # close fluidPage
+
+
+server <- function(input, output, session) {
+  
+  observeEvent(input$tabs, {
+    
+    if(input$tabs == "tab1"){
+      
+      output$table1 <- renderDataTable({
+        file_to_read = input$file1
+        if(is.null(file_to_read)){
+          return()
+        }
+        read.table(file_to_read$datapath, sep=input$sep, header=input$header1)
+      }) # end output table1
+      
+      datin <- reactive({
+        fileinp <- input$file1
+        if(is.null(fileinp)){return()}
+        inpdat <- data.frame(read.table(fileinp$datapath, sep=input$sep, header = input$header1))
+        return(inpdat)
+      }) # end datin
+      
+      sortInd <- reactiveValues()
+      observe({
+        sortInd$x <- as.character(input$sortind)
+        sortInd$y <- ifelse(input$CRcitations == "no", "as", sortInd$x)
+      })
+      
+      # when action button pressed ...
+      observeEvent(input$fetchButton, {
+        removeUI("div:has(>#firstOutput)")
+        insertUI(
+          selector = "#placeholder",
+          where = "afterEnd", # inserts UI after the end of the placeholder element
+          ui = fluidRow(
+            h3("fetching data ... (this can take some time depending on the number of articles in your sample)"),
+            output$etable <- renderDataTable({
+              if(is.null(datin())){return ()}
+              results <<- AltFunc(datsamp=(datin()), InclCit=input$CRcitations, sortindex=sortInd$y)
+            })))
+      }) # end observeEvent
+      
+      output$downloadData <- downloadHandler(
+        filename = function() {
+          paste("AltmetricListOut", ".txt", sep = "\t")
+        },
+        
+        content = function(file) {
+          sep <- ","
+          
+          write.table(results, file, sep="\t", row.names = F)
+        }
+      )
+    } # end if for tab1
+    
+    if(input$tabs == "tab2"){
+      
+      output$Narticles <- renderText({
+        paste("Number of articles in this sample = ", length(results$AltmScore), sep="")
+      })
+      output$topAS <- renderText({
+        paste("Top Altmetric attention score in this sample = ", round(results$AltmScore[1], 1), sep="")
+      })
+      output$topASartDetails <- renderText({
+        paste("Top Altmetric-scoring article in this sample: = ", results$firstAu[1], ". ", results$title[1], " ", as.numeric(format(results$PublDate[1], format="%Y")), ". doi:", results$doi[1], sep="")
+      })
+      output$topCP <- renderText({
+        paste("Median top percentile rank (by age) of this sample = ", round(median(results$rnkCxtPc, na.rm=T), 2), sep="")
+      })
+      output$topAP <- renderText({
+        paste("Median top percentile rank (all time) of this sample = ", round(median(results$rnkAllPc, na.rm=T), 2), sep="")
+      })
+      
+
+    } # end if for tab2
+    
+    if(input$tabs == "tab3"){
+    
+      output$histplots <- renderPlot({
+        input$histplots
+        
+        AS <- ggplot(data=results, aes(log10(AltmScore))) + 
+          geom_histogram(bins=round(dim(results)[1]/5),col="grey",fill="black",alpha=0.5) +
+          geom_vline(xintercept=median(log10(results$AltmScore)), linetype=2, color="red", size=1) +
+          labs(title=paste("median = ", round(10^median(log10(results$AltmScore)),1),sep="")) +
+          labs(x="log Altmetric score", y="frequency")
+        
+        CP <- ggplot(data=results, aes((rnkCxtPc))) + 
+          geom_histogram(bins=round(dim(results)[1]/5),col="grey",fill="black",alpha=0.5) +
+          geom_vline(xintercept=median((results$rnkCxtPc)), linetype=2, color="red", size=1) +
+          labs(title=paste("median = top ", round(median((results$rnkCxtPc)),1),"%",sep="")) +
+          labs(x="rank % (by age)", y=NULL)
+        
+        AP <- ggplot(data=results, aes((rnkAllPc))) + 
+          geom_histogram(bins=round(dim(results)[1]/5),col="grey",fill="black",alpha=0.5) +
+          geom_vline(xintercept=median((results$rnkAllPc)), linetype=2, color="red", size=1) +
+          labs(title=paste("median = top ", round(median((results$rnkAllPc)),1),"%",sep="")) +
+          labs(x="rank % (all time)", y=NULL)
+        
+        ggarrange(AS, CP, AP,
+                  labels=c("A", "B", "C"),
+                  ncol=3, nrow=1)
+        
+      })
+      
+     
+      } # end if for tab3
+    
+    
+    if(input$tabs == "tab4"){
+      
+      output$ERASt <- renderText({
+        paste("A. evidence ratio = ", round(linregER(results$PublDate, log10(results$AltmScore))[1], 3),";",
+              " R<sup>2</sup>",  " = ",round(linregER(results$PublDate, log10(results$AltmScore))[2], 3),sep="")
+      })
+      output$ERCPt <- renderText({
+        paste("B. evidence ratio = ", round(linregER(results$PublDate, results$rnkCxtPc)[1], 3),";",
+              " R<sup>2</sup>",  " = ", round(linregER(results$PublDate, results$rnkCxtPc)[2], 3),sep="")
+      })
+      output$ERAPt <- renderText({
+        paste("C. evidence ratio = ", round(linregER(results$PublDate, results$rnkAllPc)[1], 3),";",
+              " R<sup>2</sup>",  " = ", round(linregER(results$PublDate, results$rnkAllPc)[2], 3),sep="")
+      })
+      
+      
+      output$timeplots <- renderPlot({
+        input$timeplots
+        
+        ASt <- ggplot(data=results, aes(x=PublDate, y=log10(AltmScore))) + 
+          geom_point() +
+          geom_smooth() +
+          geom_smooth(method=lm, se=F, linetype="dashed", color="dark red") +
+          labs(x=NULL, y="log Altmetric score")
+        
+        CPt <- ggplot(data=results, aes(x=PublDate, y=rnkCxtPc)) + 
+          geom_point() +
+          geom_smooth() +
+          geom_smooth(method=lm, se=F, linetype="dashed", color="dark red") +
+          labs(x=NULL, y="rank % (by age)")
+        
+        APt <- ggplot(data=results, aes(x=PublDate, y=rnkAllPc)) + 
+          geom_point() +
+          geom_smooth() +
+          geom_smooth(method=lm, se=F, linetype="dashed", color="dark red") +
+          labs(x="date", y="rank % (all time)")
+        
+        ggarrange(ASt, CPt, APt,
+                  labels=c("A", "B", "C"),
+                  ncol=1, nrow=3
+                  )
+        
+      })
+      
+      
+    } # end if for tab4
+    
+    
+    if(input$tabs == "tab5"){
+      
+      if (input$CRcitations == "yes") {
+        
+        output$ERASc <- renderText({
+          dataERAScNA <- data.frame(log10(results$CRcitesYr), log10(results$AltmScore))
+          dataERAScREL <- na.omit(do.call(data.frame,lapply(dataERAScNA,function(x) replace(x, is.infinite(x), NA))))
+          paste("A. evidence ratio = ", round(linregER(dataERAScREL[,1], dataERAScREL[,2])[1], 3),";",
+                " R<sup>2</sup>",  " = ",round(linregER(dataERAScREL[,1], dataERAScREL[,2])[2], 3),sep="")
+        })
+        output$ERCPc <- renderText({
+          dataERCPcNA <- data.frame(log10(results$CRcitesYr), results$rnkCxtPc)
+          dataERCPcREL <- na.omit(do.call(data.frame,lapply(dataERCPcNA,function(x) replace(x, is.infinite(x), NA))))
+          paste("B. evidence ratio = ", round(linregER(dataERCPcREL[,1], dataERCPcREL[,2])[1], 3),";",
+                " R<sup>2</sup>",  " = ", round(linregER(dataERCPcREL[,1], dataERCPcREL[,2])[2], 3),sep="")
+        })
+        output$ERAPc <- renderText({
+          dataERAPcNA <- data.frame(log10(results$CRcitesYr), results$rnkAllPc)
+          dataERAPcREL <- na.omit(do.call(data.frame,lapply(dataERAPcNA,function(x) replace(x, is.infinite(x), NA))))
+          paste("C. evidence ratio = ", round(linregER(dataERAPcREL[,1], dataERAPcREL[,2])[1], 3),";",
+                " R<sup>2</sup>",  " = ", round(linregER(dataERAPcREL[,1], dataERAPcREL[,2])[2], 3),sep="")
+        })
+
+        output$citationplots <- renderPlot({
+          input$citationplots
+          
+          ASc <- ggplot(data=results, aes(x=log10(CRcitesYr), y=log10(AltmScore))) + 
+            geom_point() +
+            geom_smooth(method=lm, se=F, linetype="dashed", color="dark red") +
+            labs(x=NULL, y="log Altmetric score")
+          
+          CPc <- ggplot(data=results, aes(x=log10(CRcitesYr), y=rnkCxtPc)) + 
+            geom_point() +
+            geom_smooth(method=lm, se=F, linetype="dashed", color="dark red") +
+            labs(x=NULL, y="rank % (by age)")
+          
+          APc <- ggplot(data=results, aes(x=log10(CRcitesYr), y=rnkAllPc)) + 
+            geom_point() +
+            geom_smooth(method=lm, se=F, linetype="dashed", color="dark red") +
+            labs(x="log Crossref citations/year", y="rank % (all time)")
+          
+          ggarrange(ASc, CPc, APc,
+                    labels=c("A", "B", "C"),
+                    ncol=1, nrow=3
+          )
+      })
+      } # end if
+    } # end if for tab5
+    
+  
+  }) # end tab Events
+  
+  session$onSessionEnded(stopApp)
+  
+} # end server
+
+shinyApp(ui, server)
