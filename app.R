@@ -46,12 +46,12 @@ ui <- fluidPage(
     with Altmetric data."), tags$p(style="font-family:Avenir", "The app also gives you the option of fetching citation data from",
     tags$a(href="https://www.crossref.org", "Crossref"), "to examine the patterns between Altmetric and citation trends."),
     tags$p(style="font-family:Avenir", "This", tags$i(class="fab fa-github"), "Github ",
-           tags$a(href = "https://github.com/cjabradshaw/EpsilonIndexShiny", "repository"),
+           tags$a(href = "https://github.com/cjabradshaw/AltmetricShiny", "repository"),
            "provides all the 'under-the-bonnet'",tags$i(class="fab fa-r-project"),"code for the app."),
   
     tags$h4(style="font-family:Avenir", "Instructions"),
     tags$ol(tags$li(tags$p(style="font-family:Avenir", "Create a delimited text file of", tags$strong("exactly the same format"), "as the example file in this",
-           tags$a(href="https://github.com/cjabradshaw/EpsilonIndex/blob/main/datasample.csv","repository", tags$i(class="far fa-file")), ",
+           tags$a(href="https://github.com/cjabradshaw/AltmetricShiny/blob/main/doisampSm.csv","repository", tags$i(class="far fa-file")), ",
            although you can specify the delimit character (", tags$em("comma"),", ", tags$em("space"),", ", tags$em("tab"),").")),
            tags$li(tags$p(style="font-family:Avenir", "Load your delimited text file in the app by clicking the",tags$i(class="fas fa-file-import"),
            tags$strong("choose file"), "button.")),
@@ -277,7 +277,7 @@ ui <- fluidPage(
                                tags$li(tags$p(style="font-family:Avenir", tags$strong("Number of Crossref citations/year"), "(COLUMN", tags$em("CRcitesYr"),
                                               ") — total number of citations/year to date according to", tags$a(href="https://www.crossref.org", "Crossref"),
                                               "(if Crossref citations selected)")),
-                               tags$a(href="https://github.com/cjabradshaw/EpsilonIndexShiny/blob/main/LICENSE",
+                               tags$a(href="https://github.com/cjabradshaw/AltmetricShiny/blob/main/LICENSE",
                                       tags$img(height = 50, src = "GNU GPL3.png", style="float:right", title="GNU General Public Licence v3.0")),
                                tags$br()
                        ) # end ol
