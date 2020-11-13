@@ -1,0 +1,1 @@
+alm <- function(x)  altmetrics(doi = x) %>% altmetric_data()
