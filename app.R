@@ -203,8 +203,6 @@ ui <- fluidPage(
                          plotOutput(width="150%","histplots"),
                          tags$br()
                        )
-                       
-                       
               ), # end tab3
               
               tabPanel(value="tab4", title=tags$strong("inter-relationships"), style = "background: #e9f8ec",
@@ -231,7 +229,6 @@ ui <- fluidPage(
                          tags$br(),
                          plotOutput(width="150%", "interplots")
                        )
-                       
               ), # end tab4
               
               tabPanel(value="tab5", title=tags$strong("temporal trends"), style = "background: #e9f8ec",
@@ -273,7 +270,6 @@ ui <- fluidPage(
                          tags$br(),
                          plotOutput(height="1300px", "timeplots")
                        )
-                       
               ), # end tab5
               
               tabPanel(value="tab6", title=tags$strong("citation analysis"), style = "background: #e9f8ec",
@@ -312,7 +308,6 @@ ui <- fluidPage(
                          tags$br(),
                          plotOutput(height="1000px", "citationplots")
                        )
-                       
               ), # end tab6
               
              tabPanel(value="tab7", title=tags$strong("output table descriptors"), style = "background: #e9f8ec",
@@ -347,22 +342,18 @@ ui <- fluidPage(
                                tags$li(tags$p(style="font-family:Avenir", tags$strong("Number of Crossref citations/year"), "(COLUMN", tags$em("CRcitesYr"),
                                               ") — total number of citations/year to date according to", tags$a(href="https://www.crossref.org", "Crossref"),
                                               "(if Crossref citations selected)")),
-                               tags$li(tags$p(style="font-family:Avenir", tags$strong("Number of articles cited in policy documents"), "(COLUMN", tags$em("polCit"),
-                                              ") — the total number of articles in the sample cited in",
-                                              tags$a(href="https://www.altmetric.com/blog/announcing-our-new-and-improved-policy-tracker/",
-                                              "policy sources"), "around the world")),
+                               tags$li(tags$p(style="font-family:Avenir", tags$strong("Number of policy-document citations"), "(COLUMN", tags$em("polCit"),
+                                              ") — total number of citations found in", tags$a(href="https://www.altmetric.com/blog/announcing-our-new-and-improved-policy-tracker/",
+                                                                                                   "policy documents"), "around the world for articles in the sample")),
                                tags$a(href="https://github.com/cjabradshaw/AltmetricShiny/blob/main/LICENSE",
                                       tags$img(height = 50, src = "GNU GPL3.png", style="float:right", title="GNU General Public Licence v3.0")),
                                tags$br()
                        ) # end ol
-
          ) # end tab7
-  
   ) # end tabsetPanel
   
   
 ) # close fluidPage
-
 
 server <- function(input, output, session) {
   
@@ -385,13 +376,11 @@ server <- function(input, output, session) {
         inpdat <- data.frame(read.table(fileinp$datapath, sep=input$sep, header = input$header1))
         return(inpdat)
       }) # end datin
-      
-      
-      
+
       sortInd <- reactiveValues()
       observe({
         sortInd$x <- as.character(input$sortind)
-        sortInd$y <- ifelse(input$CRcitations == "no", "as", sortInd$x)
+        #sortInd$y <- ifelse(input$CRcitations == "no", "as", sortInd$x)
       })
       
       # when action button pressed ...
@@ -404,7 +393,7 @@ server <- function(input, output, session) {
             h3("fetching data ... (this can take some time depending on the number of articles in your sample)"),
               output$etable <- renderDataTable({
               if(is.null(datin())){return ()}
-              results <<- AltFunc(datsamp=(datin()), InclCit=input$CRcitations, sortindex=sortInd$y)
+              results <<- AltFunc(datsamp=(datin()), InclCit=input$CRcitations, sortindex=sortInd$x)
             })))
       }) # end observeEvent
       
@@ -457,7 +446,6 @@ server <- function(input, output, session) {
       output$SArtPol <- renderText({
         paste("• total number of policy-document citations in this sample: ", sum(results$polCit), sep="")
       })
-      
 
     } # end if for tab2
     
@@ -487,13 +475,9 @@ server <- function(input, output, session) {
         ggarrange(AS, CP, AP,
                   labels=c("A", "B", "C"),
                   ncol=3, nrow=1)
-        
-      })
-      
-     
+        })
       } # end if for tab3
-    
-    
+
     if(input$tabs == "tab4"){
       
       output$ERASCP <- renderText({
@@ -505,7 +489,6 @@ server <- function(input, output, session) {
               " R<sup>2</sup>",  " = ", round(linregER(log10(results$AltmScore), logit(results$rnkAllPc/100))[2], 3),sep="")
       })
 
-      
       output$interplots <- renderPlot({
         input$interplots
         
@@ -525,10 +508,7 @@ server <- function(input, output, session) {
                   labels=c("A", "B"),
                   ncol=2, nrow=1
         )
-        
       })
-      
-      
     } # end if for tab4
     
     if(input$tabs == "tab5"){
@@ -545,8 +525,7 @@ server <- function(input, output, session) {
         paste("C. evidence ratio = ", round(linregER(results$PublDate, results$rnkAllPc)[1], 3),";",
               " R<sup>2</sup>",  " = ", round(linregER(results$PublDate, results$rnkAllPc)[2], 3),sep="")
       })
-      
-      
+
       output$timeplots <- renderPlot({
         input$timeplots
         
@@ -578,13 +557,9 @@ server <- function(input, output, session) {
                   labels=c("A", "B", "C", "D"),
                   ncol=1, nrow=4
                   )
-        
       })
-      
-      
     } # end if for tab5
-    
-    
+
     if(input$tabs == "tab6"){
       
       if (input$CRcitations == "yes") {
@@ -634,7 +609,6 @@ server <- function(input, output, session) {
       } # end if
     } # end if for tab6
     
-  
   }) # end tab Events
   
   session$onSessionEnded(stopApp)
