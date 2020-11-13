@@ -17,12 +17,13 @@ library(ggpubr)
 library(car)
 
 ## call functions
-source(file.path("./", "AICc.R"), local=T)
-source(file.path("./", "deltaIC.R"), local=T)
-source(file.path("./", "weightIC.R"), local=T)
-source(file.path("./", "linregER.R"), local=T)
-source(file.path("./", "alm.R"), local=T)
-source(file.path("./", "AltFunc.R"), local=T)
+source(file.path("./functions/", "AICc.R"), local=T)
+source(file.path("./functions/", "deltaIC.R"), local=T)
+source(file.path("./functions/", "weightIC.R"), local=T)
+source(file.path("./functions/", "linregER.R"), local=T)
+source(file.path("./functions/", "alm.R"), local=T)
+source(file.path("./functions/", "AltFunc.R"), local=T)
+source(file.path("./functions/", "setBackgroundColor.R"), local=T)
 
 ui <- fluidPage(
   
@@ -31,11 +32,16 @@ ui <- fluidPage(
     tags$script(type='text/javascript', src="embed.js")
   ),
   
+  setBackgroundColor(
+    color = "#f8fbf9",
+    gradient = c("linear"),
+    direction = c("bottom")
+  ),
 
   # title of app
   titlePanel("Altmetric fetch, sort & analyse"),
   
-  wellPanel(style = "background: azure",
+  wellPanel(style = "background: #e4feea",
     tags$a(href="https://github.com/cjabradshaw/AltmetricShiny", tags$img(height = 200, src = "altmetric_logo.png", style="float:right")),
     tags$p(style="font-family:Avenir", tags$i(class="fab fa-r-project", title="R Project"),"Shiny App by", tags$a(href="https://globalecologyflinders.com/people/#CJAB", "Corey Bradshaw "),
            tags$a(href = "mailto:corey.bradshaw@flinders.edu.au","(",tags$i(class="far fa-envelope"),"e-mail"),";",
@@ -50,7 +56,8 @@ ui <- fluidPage(
     tags$a(href="https://www.crossref.org", "Crossref"), "to examine the patterns between Altmetric and citation trends."),
     tags$p(style="font-family:Avenir", "This", tags$i(class="fab fa-github"), "Github ",
            tags$a(href = "https://github.com/cjabradshaw/AltmetricShiny", "repository"),
-           "provides all the 'under-the-bonnet'",tags$i(class="fab fa-r-project"),"code for the app. Note that attempting to fetch Altmetric data for
+           "provides all the 'under-the-bonnet'",tags$i(class="fab fa-r-project"),"code for the app."),
+    tags$p(style="font-family:Avenir; color:red", "Note that attempting to fetch Altmetric data for
             an incorrect doi or for a doi with no associated Altmetric entry will cause the algorithm to fail."),
   
     tags$h4(style="font-family:Avenir", "Instructions"),
@@ -76,7 +83,7 @@ ui <- fluidPage(
                        
                        sidebarLayout(
                          sidebarPanel(
-                           wellPanel(style = "background: LightCyan",
+                           wellPanel(style = "background: #c7fdd4",
                              fileInput("file1", label=tags$p(tags$i(class='fas fa-file-import'),"choose delimited file with doi data (1 column)"),
                                        multiple=F, buttonLabel="choose file", placeholder="no file selected"),
                              tags$hr(),
@@ -98,7 +105,7 @@ ui <- fluidPage(
                          ),
                          
                          # open main panel
-                         mainPanel(style = "background: GhostWhite",
+                         mainPanel(style = "background: #f8fbf9",
                            
                            fluidRow(
                              tags$div(id = "firstOutput", 
@@ -115,7 +122,7 @@ ui <- fluidPage(
                        ) # sidebarLayout
               ), # end tab1
               
-              tabPanel(value="tab2", title=tags$strong("highlights"), style = "background: MintCream",
+              tabPanel(value="tab2", title=tags$strong("highlights"), style = "background: #e9f8ec",
                        tags$br(),
                        tags$p(style="font-family:Avenir", tags$strong("Some summary highlights from your sample:")),
                        tags$img(height = 150, src = "highlights.png", style="float:right"),
@@ -173,7 +180,7 @@ ui <- fluidPage(
                        
               ), # end tab2
               
-              tabPanel(value="tab3", title=tags$strong("histograms"), style = "background: MintCream",
+              tabPanel(value="tab3", title=tags$strong("histograms"), style = "background: #e9f8ec",
                        tags$br(),
                        tags$p(style="font-family:Avenir", "These histograms show the distribution of three different Altmetrics:"),
                        tags$ul(tags$li(tags$p(style="font-family:Avenir", tags$strong("A: Altmetric score"), " — this is the Altmetric '",
@@ -200,7 +207,7 @@ ui <- fluidPage(
                        
               ), # end tab3
               
-              tabPanel(value="tab4", title=tags$strong("inter-relationships"), style = "background: MintCream",
+              tabPanel(value="tab4", title=tags$strong("inter-relationships"), style = "background: #e9f8ec",
                        tags$br(),
                        tags$p(style="font-family:Avenir", "The following plots show the relationship between each of the two percentile rank measures
                               (by age and all-time) and the log of the Altmetric scores:"),
@@ -227,7 +234,7 @@ ui <- fluidPage(
                        
               ), # end tab4
               
-              tabPanel(value="tab5", title=tags$strong("temporal trends"), style = "background: MintCream",
+              tabPanel(value="tab5", title=tags$strong("temporal trends"), style = "background: #e9f8ec",
                        tags$br(),
                        tags$p(style="font-family:Avenir", "The following time plots show the temporal patterns in the three different Altmetrics, as well
                               as the trend in policy-document citations:"),
@@ -269,7 +276,7 @@ ui <- fluidPage(
                        
               ), # end tab5
               
-              tabPanel(value="tab6", title=tags$strong("citation analysis"), style = "background: MintCream",
+              tabPanel(value="tab6", title=tags$strong("citation analysis"), style = "background: #e9f8ec",
                        tags$br(),
                        tags$p(style="font-family:Avenir", "If you selected to include Crossref citation data, the following plots show the power-law relationship
                               between article citations and each of the three different Altmetrics:"),
@@ -308,7 +315,7 @@ ui <- fluidPage(
                        
               ), # end tab6
               
-             tabPanel(value="tab7", title=tags$strong("output table descriptors"), style = "background: MintCream",
+             tabPanel(value="tab7", title=tags$strong("output table descriptors"), style = "background: #e9f8ec",
                       tags$br(),
                       tags$a(href="https://flinders.edu.au/", tags$img(height = 100, src = "F_V_CMYK.png", style="float:right",title="Flinders University")),
                       tags$h2(style="font-family:Avenir", "Description of columns in the output file"),
