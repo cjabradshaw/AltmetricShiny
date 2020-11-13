@@ -50,7 +50,8 @@ ui <- fluidPage(
     tags$a(href="https://www.crossref.org", "Crossref"), "to examine the patterns between Altmetric and citation trends."),
     tags$p(style="font-family:Avenir", "This", tags$i(class="fab fa-github"), "Github ",
            tags$a(href = "https://github.com/cjabradshaw/AltmetricShiny", "repository"),
-           "provides all the 'under-the-bonnet'",tags$i(class="fab fa-r-project"),"code for the app."),
+           "provides all the 'under-the-bonnet'",tags$i(class="fab fa-r-project"),"code for the app. Note that attempting to fetch Altmetric data for
+            an incorrect doi or for a doi with no associated Altmetric entry will cause the algorithm to fail."),
   
     tags$h4(style="font-family:Avenir", "Instructions"),
     tags$ol(tags$li(tags$p(style="font-family:Avenir", "Create a delimited text file of", tags$strong("exactly the same format"), "as the example file in this",
@@ -122,6 +123,7 @@ ui <- fluidPage(
                        mainPanel(
                          
                          tags$script(type='text/javascript', ' _altmetric_embed_init(); '),
+                         textOutput('error'),
                          
                          tags$br(),
                          htmlOutput('Narticles'),
@@ -141,6 +143,10 @@ ui <- fluidPage(
                          tags$br(),
                          htmlOutput('topAP'),
                          tags$br(),
+                         htmlOutput('nArtPol'),
+                         tags$br(),
+                         htmlOutput('SArtPol'),
+                         tags$br(),
                          tags$head(tags$style("#Narticles{font-family:Avenir;font-style:italic}"
                          )),
                          tags$head(tags$style("#topAS{font-family:Avenir;font-style:italic}"
@@ -156,6 +162,10 @@ ui <- fluidPage(
                          tags$head(tags$style("#topCP{font-family:Avenir;font-style:italic}"
                          )),
                          tags$head(tags$style("#topAP{font-family:Avenir;font-style:italic}"
+                         )),
+                         tags$head(tags$style("#nArtPol{font-family:Avenir;font-style:italic}"
+                         )),
+                         tags$head(tags$style("#SArtPol{font-family:Avenir;font-style:italic}"
                          )),
                          tags$br()
                          
@@ -219,7 +229,8 @@ ui <- fluidPage(
               
               tabPanel(value="tab5", title=tags$strong("temporal trends"), style = "background: MintCream",
                        tags$br(),
-                       tags$p(style="font-family:Avenir", "The following time plots show the temporal patterns in the three different Altmetrics:"),
+                       tags$p(style="font-family:Avenir", "The following time plots show the temporal patterns in the three different Altmetrics, as well
+                              as the trend in policy-document citations:"),
                        tags$ul(tags$li(tags$p(style="font-family:Avenir", tags$strong("A: Altmetric score"), " — this is the Altmetric '",
                                               tags$a(href="https://www.altmetric.com/about-our-data/the-donut-and-score/", "attention score"),
                                               "' as an indicator of the volume of attention an article has received (higher scores = more attention.")),
@@ -231,7 +242,9 @@ ui <- fluidPage(
                                tags$li(tags$p(style="font-family:Avenir", tags$strong("C: All time-rank percentile"), " — this is the percentile of the Altmetric",
                                               tags$a(href="https://www.altmetric.com/about-our-data/the-donut-and-score/",
                                                      "attention score"), tags$a(href="https://help.altmetric.com/support/solutions/articles/6000233313-putting-the-altmetric-attention-score-in-context","rank"),
-                                              "in context of all articles with Altmetric data ever published in the journal. Here, low percentiles = top."))
+                                              "in context of all articles with Altmetric data ever published in the journal. Here, low percentiles = top.")),
+                               tags$li(tags$p(style="font-family:Avenir", tags$strong("D: Policy-document citations"), " — the number of policy-document
+                                              citations over time"))
                        ), # end ul
                        
                        mainPanel(
@@ -248,10 +261,10 @@ ui <- fluidPage(
                          tags$head(tags$style("#ERAPt{font-family:Avenir}"
                          )),
                          tags$br(),
-                         tags$p(style="font-family:Avenir","In each panel below, the loess trend is indicated by the blue line, and the linear trend by a
+                         tags$p(style="font-family:Avenir","In the panels below, the loess trend is indicated by the blue line, and the linear trend by a
                                 red dashed line."),
                          tags$br(),
-                         plotOutput(height="1000px", "timeplots")
+                         plotOutput(height="1300px", "timeplots")
                        )
                        
               ), # end tab5
@@ -327,6 +340,10 @@ ui <- fluidPage(
                                tags$li(tags$p(style="font-family:Avenir", tags$strong("Number of Crossref citations/year"), "(COLUMN", tags$em("CRcitesYr"),
                                               ") — total number of citations/year to date according to", tags$a(href="https://www.crossref.org", "Crossref"),
                                               "(if Crossref citations selected)")),
+                               tags$li(tags$p(style="font-family:Avenir", tags$strong("Number of articles cited in policy documents"), "(COLUMN", tags$em("polCit"),
+                                              ") — the total number of articles in the sample cited in",
+                                              tags$a(href="https://www.altmetric.com/blog/announcing-our-new-and-improved-policy-tracker/",
+                                              "policy sources"), "around the world")),
                                tags$a(href="https://github.com/cjabradshaw/AltmetricShiny/blob/main/LICENSE",
                                       tags$img(height = 50, src = "GNU GPL3.png", style="float:right", title="GNU General Public Licence v3.0")),
                                tags$br()
@@ -362,6 +379,8 @@ server <- function(input, output, session) {
         return(inpdat)
       }) # end datin
       
+      
+      
       sortInd <- reactiveValues()
       observe({
         sortInd$x <- as.character(input$sortind)
@@ -376,7 +395,7 @@ server <- function(input, output, session) {
           where = "afterEnd", # inserts UI after the end of the placeholder element
           ui = fluidRow(
             h3("fetching data ... (this can take some time depending on the number of articles in your sample)"),
-            output$etable <- renderDataTable({
+              output$etable <- renderDataTable({
               if(is.null(datin())){return ()}
               results <<- AltFunc(datsamp=(datin()), InclCit=input$CRcitations, sortindex=sortInd$y)
             })))
@@ -424,6 +443,12 @@ server <- function(input, output, session) {
       })
       output$topAP <- renderText({
         paste("• median top percentile rank (all time) of this sample: ", "top ",round(median(results$rnkAllPc, na.rm=T), 2),"%", sep="")
+      })
+      output$nArtPol <- renderText({
+        paste("• number articles in this sample cited in policy documents: ", length(which(results$polCit > 0)), sep="")
+      })
+      output$SArtPol <- renderText({
+        paste("• total number of policy-document citations in this sample: ", sum(results$polCit), sep="")
       })
       
 
@@ -534,11 +559,17 @@ server <- function(input, output, session) {
           geom_point() +
           geom_smooth() +
           geom_smooth(method=lm, se=F, linetype="dashed", color="dark red") +
-          labs(x="date", y="rank % (all time)")
+          labs(x=NULL, y="rank % (all time)")
+
+        polDat <- results[which(results$polCit > 0),]
+        Polt <- ggplot(data=polDat, aes(x=PublDate, y=polCit)) + 
+          geom_point() +
+          geom_smooth() +
+          labs(x="date", y="policy citations")
         
-        ggarrange(ASt, CPt, APt,
-                  labels=c("A", "B", "C"),
-                  ncol=1, nrow=3
+        ggarrange(ASt, CPt, APt, Polt, 
+                  labels=c("A", "B", "C", "D"),
+                  ncol=1, nrow=4
                   )
         
       })
