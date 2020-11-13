@@ -14,7 +14,10 @@ AltFunc <- function(datsamp, InclCit='no', sortindex='as') {
   firstAuth <- ifelse(is.na(results$authors1) == T, results$authors, results$authors1)
   
   # abbreviated title
-  titlAbbr <- paste(substr(results$title, 1, 20), "...", sep="")
+  titlAbbr <- paste(substr(results$title, 1, 20), " ...", sep="")
+  
+  # journal title
+  jrnName <- as.character(results$journal)
   
   # rank-in-context percentile
   rnkContextPc1 <- as.numeric(results$context.similar_age_journal_3m.rank)/as.numeric(results$context.similar_age_journal_3m.count)
@@ -39,20 +42,18 @@ AltFunc <- function(datsamp, InclCit='no', sortindex='as') {
     }
     citesYr <- round(cites/ElapsYrs, 3) # cites/year
    
-    rnkDat <- data.frame(firstAuth, titlAbbr, datsamp[,1], publDate, scores, rnkContextPc, rnkAlltimePc, cites, citesYr)
-    colnames(rnkDat) <- c("firstAu","title","doi","PublDate","AltmScore","rnkCxtPc","rnkAllPc","CRcites","CRcitesYr")
-    rnkDatAsort <- rnkDat[order(rnkDat[,5],decreasing=T),1:9]
+    rnkDat <- data.frame(firstAuth, publDate, titlAbbr, jrnName, datsamp[,1], scores, rnkContextPc, rnkAlltimePc, cites, citesYr)
+    colnames(rnkDat) <- c("firstAu", "PublDate","title", "Journal", "doi", "AltmScore","rnkCxtPc","rnkAllPc","CRcites","CRcitesYr")
+    rnkDatAsort <- rnkDat[order(rnkDat[,6],decreasing=T),1:10]
   } # end if
   
   if (InclCit == "no") {
-    rnkDat <- data.frame(firstAuth, titlAbbr, datsamp[,1], publDate, scores, rnkContextPc, rnkAlltimePc)
-    colnames(rnkDat) <- c("firstAu","title","doi","PublDate","AltmScore","rnkCxtPc","rnkAllPc")
-    rnkDatAsort <- rnkDat[order(rnkDat[,5],decreasing=T),1:7]
+    rnkDat <- data.frame(firstAuth, publDate, titlAbbr, jrnName, datsamp[,1], scores, rnkContextPc, rnkAlltimePc)
+    colnames(rnkDat) <- c("firstAu", "PublDate","title", "Journal", "doi","AltmScore","rnkCxtPc","rnkAllPc")
+    rnkDatAsort <- rnkDat[order(rnkDat[,6],decreasing=T),1:8]
   } # end if
   
   # print final output
   return(rnkDatAsort)
   
 } # end AltFunc
-
-
