@@ -47,18 +47,25 @@ AltFunc <- function(datsamp, InclCit='no', sortindex='as') {
    
     rnkDat <- data.frame(firstAuth, publDate, titlAbbr, jrnName, datsamp[,1], scores, rnkContextPc, rnkAlltimePc, cites, citesYr, polCit)
     colnames(rnkDat) <- c("firstAu", "PublDate","title", "Journal", "doi", "AltmScore","rnkCxtPc","rnkAllPc","CRcites","CRcitesYr","polCit")
-    rnkDatAsort <- rnkDat[order(rnkDat[,6],decreasing=T),1:11]
   } # end if
   
   if (InclCit == "no") {
     rnkDat <- data.frame(firstAuth, publDate, titlAbbr, jrnName, datsamp[,1], scores, rnkContextPc, rnkAlltimePc, polCit)
     colnames(rnkDat) <- c("firstAu", "PublDate","title", "Journal", "doi","AltmScore","rnkCxtPc","rnkAllPc", "polCit")
-    rnkDatAsort <- rnkDat[order(rnkDat[,6],decreasing=T),1:9]
   } # end if
   
+  # sort on desired metric
+  # "Altmetric score"="as","context rank percentile"="cp","all-time rank percentile"="ap","publication date"="d"
+  if (sortindex == 'as') {
+    rnkDatAsort <- rnkDat[order(rnkDat[,6],decreasing=T), ]}
+  if (sortindex == 'cp') {
+    rnkDatAsort <- rnkDat[order(rnkDat[,7],decreasing=F), ]}
+  if (sortindex == 'ap') {
+    rnkDatAsort <- rnkDat[order(rnkDat[,8],decreasing=F), ]}
+  if (sortindex == 'd') {
+    rnkDatAsort <- rnkDat[order(rnkDat[,2],decreasing=T), ]}
+
   # print final output
   return(rnkDatAsort)
   
 } # end AltFunc
-
-
