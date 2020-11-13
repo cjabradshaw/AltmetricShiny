@@ -1,7 +1,7 @@
 AltFunc <- function(datsamp, InclCit='no', sortindex='as') {
   
   # make list
-  doiList <- list(as.vector(as.character(datsamp[,1])))
+  doiList <- list(as.vector(as.character(lapply(datsamp[,1], trimws, which="both"))))
   
   ## retrieve Altmetrics data
   results <- pmap_df(doiList, alm)
@@ -18,6 +18,9 @@ AltFunc <- function(datsamp, InclCit='no', sortindex='as') {
   
   # journal title
   jrnName <- as.character(results$journal)
+  
+  # policy citations
+  polCit <- as.numeric(ifelse(is.na(results$cited_by_policies_count)==T, 0, results$cited_by_policies_count))
   
   # rank-in-context percentile
   rnkContextPc1 <- as.numeric(results$context.similar_age_journal_3m.rank)/as.numeric(results$context.similar_age_journal_3m.count)
@@ -42,15 +45,15 @@ AltFunc <- function(datsamp, InclCit='no', sortindex='as') {
     }
     citesYr <- round(cites/ElapsYrs, 3) # cites/year
    
-    rnkDat <- data.frame(firstAuth, publDate, titlAbbr, jrnName, datsamp[,1], scores, rnkContextPc, rnkAlltimePc, cites, citesYr)
-    colnames(rnkDat) <- c("firstAu", "PublDate","title", "Journal", "doi", "AltmScore","rnkCxtPc","rnkAllPc","CRcites","CRcitesYr")
-    rnkDatAsort <- rnkDat[order(rnkDat[,6],decreasing=T),1:10]
+    rnkDat <- data.frame(firstAuth, publDate, titlAbbr, jrnName, datsamp[,1], scores, rnkContextPc, rnkAlltimePc, cites, citesYr, polCit)
+    colnames(rnkDat) <- c("firstAu", "PublDate","title", "Journal", "doi", "AltmScore","rnkCxtPc","rnkAllPc","CRcites","CRcitesYr","polCit")
+    rnkDatAsort <- rnkDat[order(rnkDat[,6],decreasing=T),1:11]
   } # end if
   
   if (InclCit == "no") {
-    rnkDat <- data.frame(firstAuth, publDate, titlAbbr, jrnName, datsamp[,1], scores, rnkContextPc, rnkAlltimePc)
-    colnames(rnkDat) <- c("firstAu", "PublDate","title", "Journal", "doi","AltmScore","rnkCxtPc","rnkAllPc")
-    rnkDatAsort <- rnkDat[order(rnkDat[,6],decreasing=T),1:8]
+    rnkDat <- data.frame(firstAuth, publDate, titlAbbr, jrnName, datsamp[,1], scores, rnkContextPc, rnkAlltimePc, polCit)
+    colnames(rnkDat) <- c("firstAu", "PublDate","title", "Journal", "doi","AltmScore","rnkCxtPc","rnkAllPc", "polCit")
+    rnkDatAsort <- rnkDat[order(rnkDat[,6],decreasing=T),1:9]
   } # end if
   
   # print final output
