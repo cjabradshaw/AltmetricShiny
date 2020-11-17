@@ -16,6 +16,8 @@ library(ggplot2)
 library(ggpubr)
 library(car)
 library(ggrepel)
+library(tidyverse)
+library(purrr)
 
 ## call functions
 source(file.path("./functions/", "AICc.R"), local=T)
@@ -58,8 +60,6 @@ ui <- fluidPage(
     tags$p(style="font-family:Avenir", "This", tags$i(class="fab fa-github"), "Github ",
            tags$a(href = "https://github.com/cjabradshaw/AltmetricShiny", "repository"),
            "provides all the 'under-the-bonnet'",tags$i(class="fab fa-r-project"),"code for the app."),
-    tags$p(style="font-family:Avenir; color:red", "Note that attempting to fetch Altmetric data for
-            an incorrect doi or for a doi with no associated Altmetric entry will cause the algorithm to fail."),
   
     tags$h4(style="font-family:Avenir", "Instructions"),
     tags$ol(tags$li(tags$p(style="font-family:Avenir", "Create a delimited text file of", tags$strong("exactly the same format"), "as the example file in this",
@@ -139,6 +139,10 @@ ui <- fluidPage(
                          textOutput('error'),
                          
                          tags$br(),
+                         htmlOutput('totDOI'),
+                         tags$br(),
+                         htmlOutput('missingAltm'),
+                         tags$br(),
                          htmlOutput('Narticles'),
                          tags$br(),
                          htmlOutput('topAS'),
@@ -160,6 +164,10 @@ ui <- fluidPage(
                          tags$br(),
                          htmlOutput('SArtPol'),
                          tags$br(),
+                         tags$head(tags$style("#totDOI{font-family:Avenir;font-style:italic}"
+                         )),
+                         tags$head(tags$style("#missingAltm{font-family:Avenir;font-style:italic}"
+                         )),
                          tags$head(tags$style("#Narticles{font-family:Avenir;font-style:italic}"
                          )),
                          tags$head(tags$style("#topAS{font-family:Avenir;font-style:italic}"
@@ -398,7 +406,8 @@ server <- function(input, output, session) {
             h3("fetching data ... (this can take some time depending on the number of articles in your sample)"),
               output$etable <- renderDataTable({
               if(is.null(datin())){return ()}
-              results <<- AltFunc(datsamp=(datin()), InclCit=input$CRcitations, sortindex=sortInd$x)
+              results.list <<- AltFunc(datsamp=(datin()), InclCit=input$CRcitations, sortindex=sortInd$x)
+              results <- results.list$rnkDatAsort
             })))
       }) # end observeEvent
       
@@ -416,8 +425,14 @@ server <- function(input, output, session) {
     
     if(input$tabs == "tab2"){
       
+      output$totDOI <- renderText({
+        paste("• number of digital object identifiers (doi) processed in this sample: ", results.list$missingAltm + length(results$AltmScore), sep="")
+      })
+      output$missingAltm <- renderText({
+        paste("• number of digital object identifiers (doi) with missing Altmetrics data in this sample: ", results.list$missingAltm, sep="")
+      })
       output$Narticles <- renderText({
-        paste("• number of articles in this sample: ", length(results$AltmScore), sep="")
+        paste("• number of articles with Altmetrics data in this sample: ", length(results$AltmScore), sep="")
       })
       output$topAS <- renderText({
         paste("• top Altmetric attention score in this sample: ", round(results$AltmScore[1], 1), sep="")
