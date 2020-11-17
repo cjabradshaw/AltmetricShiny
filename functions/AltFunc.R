@@ -1,10 +1,23 @@
 AltFunc <- function(datsamp, InclCit='no', sortindex='as') {
   
   # make list
-  doiList <- list(as.vector(as.character(lapply(datsamp[,1], trimws, which="both"))))
+  doiList <- lapply(datsamp[,1], trimws, which="both")
   
-  ## retrieve Altmetrics data
-  results <- pmap_df(doiList, alm)
+  # ignore doi with no Altmetric data
+
+  # request Altmetrics data
+  requests <- map(doiList, alm)
+  
+  # only doi with data
+  results1 <- requests %>%  
+    map("result") %>% 
+    compact(.) %>% 
+    modify_depth(1, altmetric_data)
+  
+  results <- bind_rows(results1)
+  
+  # missing Altmetric data
+  missingAltm <- length(doiList) - dim(results)[1]
   
   ## isolate fields
   # latest Altmetric scores
@@ -41,16 +54,16 @@ AltFunc <- function(datsamp, InclCit='no', sortindex='as') {
     ## CrossRef citations
     cites <- rep(NA,length(scores))
     for (c in 1:length(cites)) {
-      cites[c] <- cr_citation_count(doi = doiList[[1]][c])$count
+      cites[c] <- cr_citation_count(doi = results$doi[c])$count
     }
     citesYr <- round(cites/ElapsYrs, 3) # cites/year
    
-    rnkDat <- data.frame(firstAuth, publDate, titlAbbr, jrnName, datsamp[,1], scores, rnkContextPc, rnkAlltimePc, cites, citesYr, polCit)
+    rnkDat <- data.frame(firstAuth, publDate, titlAbbr, jrnName, results$doi, scores, rnkContextPc, rnkAlltimePc, cites, citesYr, polCit)
     colnames(rnkDat) <- c("firstAu", "PublDate","title", "Journal", "doi", "AltmScore","rnkCxtPc","rnkAllPc","CRcites","CRcitesYr","polCit")
   } # end if
   
   if (InclCit == "no") {
-    rnkDat <- data.frame(firstAuth, publDate, titlAbbr, jrnName, datsamp[,1], scores, rnkContextPc, rnkAlltimePc, polCit)
+    rnkDat <- data.frame(firstAuth, publDate, titlAbbr, jrnName, results$doi, scores, rnkContextPc, rnkAlltimePc, polCit)
     colnames(rnkDat) <- c("firstAu", "PublDate","title", "Journal", "doi","AltmScore","rnkCxtPc","rnkAllPc", "polCit")
   } # end if
   
@@ -66,6 +79,6 @@ AltFunc <- function(datsamp, InclCit='no', sortindex='as') {
     rnkDatAsort <- rnkDat[order(rnkDat[,2],decreasing=T), ]}
 
   # print final output
-  return(rnkDatAsort)
+  return(list(rnkDatAsort = rnkDatAsort, missingAltm = missingAltm))
   
 } # end AltFunc
