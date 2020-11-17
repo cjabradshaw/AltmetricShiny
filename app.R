@@ -17,7 +17,6 @@ library(ggpubr)
 library(car)
 library(ggrepel)
 library(tidyverse)
-library(purrr)
 
 ## call functions
 source(file.path("./functions/", "AICc.R"), local=T)
