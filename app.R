@@ -24,8 +24,9 @@ source(file.path("./functions/", "AICc.R"), local=T)
 source(file.path("./functions/", "deltaIC.R"), local=T)
 source(file.path("./functions/", "weightIC.R"), local=T)
 source(file.path("./functions/", "linregER.R"), local=T)
-source(file.path("./functions/", "alm.R"), local=T)
 source(file.path("./functions/", "AltFunc.R"), local=T)
+source(file.path("./functions/", "safe_altmetrics.R"), local=T)
+source(file.path("./functions/", "alm.R"), local=T)
 source(file.path("./functions/", "setBackgroundColor.R"), local=T)
 
 ui <- fluidPage(
@@ -407,7 +408,7 @@ server <- function(input, output, session) {
               output$etable <- renderDataTable({
               if(is.null(datin())){return ()}
               results.list <<- AltFunc(datsamp=(datin()), InclCit=input$CRcitations, sortindex=sortInd$x)
-              results <- results.list$rnkDatAsort
+              results <<- results.list$rnkDatAsort
             })))
       }) # end observeEvent
       
