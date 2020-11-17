@@ -522,7 +522,7 @@ server <- function(input, output, session) {
             geom_point() +
             geom_smooth() +
             geom_smooth(method=lm, se=F, linetype="dashed", color="dark red") +
-            labs(x="log Altmetric score", y="logit rank proportion (by age)") +
+            labs(x=NULL, y="logit rank proportion (by age)") +
             geom_label_repel(aes(label = doi),
                              box.padding   = 0.35, 
                              point.padding = 0.5,
@@ -569,7 +569,7 @@ server <- function(input, output, session) {
             geom_point() +
             geom_smooth() +
             geom_smooth(method=lm, se=F, linetype="dashed", color="dark red") +
-            labs(x="log Altmetric score", y="logit rank proportion (by age)") +
+            labs(x=NULL, y="logit rank proportion (by age)") +
             scale_radius(c(0.45,0.45)) +
             Ctheme
           
