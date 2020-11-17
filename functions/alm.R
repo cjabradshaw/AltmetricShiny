@@ -1,1 +1,1 @@
-alm <- function(x)  altmetrics(doi = x) %>% altmetric_data()
+alm <- function(x)  safe_altmetrics(doi = x)
