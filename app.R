@@ -15,6 +15,7 @@ library(rcrossref)
 library(ggplot2)
 library(ggpubr)
 library(car)
+library(ggrepel)
 
 ## call functions
 source(file.path("./functions/", "AICc.R"), local=T)
