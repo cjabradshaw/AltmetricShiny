@@ -42,7 +42,7 @@ ui <- fluidPage(
   ),
 
   # title of app
-  titlePanel("Altmetric fetch, sort & analyse"),
+  titlePanel("AltmetricShiny: fetch, sort & analyse Altmetric data"),
   
   wellPanel(style = "background: #e4feea",
     tags$a(href="https://github.com/cjabradshaw/AltmetricShiny", tags$img(height = 200, src = "altmetric_logo.png", style="float:right")),
@@ -72,7 +72,9 @@ ui <- fluidPage(
            tags$a(href="https://globalecologyflinders.com/", tags$img(height = 100, src = "GEL Logo Kaurna transparent.png", style="float:right",
                                                                title="Global Ecology @ Flinders University")),
            tags$li(tags$p(style="font-family:Avenir", "Select whether you want to add doi labels",
-                          tags$i(class="fas fa-tag"), "to the", tags$em("inter-relationships"), "plots.")),
+                          tags$i(class="fas fa-tag"), "to the plots.")),
+           tags$li(tags$p(style="font-family:Avenir", "Select whether you want to restrict the results to a particular date range",
+                          tags$i(class="fas fa-clock"))),
            tags$li(tags$p(style="font-family:Avenir", "Choose how you want the output file to be", tags$i(class="fas fa-sort"),
            "sorted by selecting one of the four choices in the drop-down menu:", tags$strong("Altmetric score"),",",tags$strong("context rank percentile"),",",
            tags$strong("all-time rank percentile"),", or",tags$strong("publication date"),".")),
@@ -96,8 +98,11 @@ ui <- fluidPage(
                              radioButtons("CRcitations", label=tags$p(tags$i(class='fas fa-bookmark'), "include Crossref citation data?"), inline=T,
                                           choiceNames = list((icon("fas fa-thumbs-down")), (icon("fas fa-thumbs-up"))), choiceValues = list("no","yes")),
                              tags$hr(),
-                             radioButtons("doilabs", label=tags$p(tags$i(class='fas fa-tag'), "include doi labels on", tags$em("inter-relationships"), "plots?"), inline=T,
+                             radioButtons("doilabs", label=tags$p(tags$i(class='fas fa-tag'), "include doi labels on plots?"), inline=T,
                                           choiceNames = list((icon("fas fa-thumbs-down")), (icon("fas fa-thumbs-up"))), choiceValues = list("no","yes")),
+                             tags$hr(),
+                             dateRangeInput("timerange",label=tags$p(tags$i(class='fas fa-clock'), "restrict results to a date range?"),
+                                            start="1970-01-01", end=NULL, format="dd-M-yyyy", startview="decade", separator=" to "),
                              tags$hr(),
                              selectInput("sortind",label=tags$p(tags$i(class='fas fa-sort'), "choose sort index"), 
                                          c("Altmetric score"="as","context rank percentile"="cp","all-time rank percentile"="ap","publication date"="d")),
@@ -130,7 +135,7 @@ ui <- fluidPage(
               
               tabPanel(value="tab2", title=tags$strong("highlights"), style = "background: #e9f8ec",
                        tags$br(),
-                       tags$p(style="font-family:Avenir", tags$strong("Some summary highlights from your sample:")),
+                       tags$p(style="font-family:Avenir", tags$strong("Some summary highlights from your sample (user-set time restrictions are reflected in these values):")),
                        tags$img(height = 150, src = "highlights.png", style="float:right"),
                        
                        mainPanel(
@@ -138,6 +143,8 @@ ui <- fluidPage(
                          tags$script(type='text/javascript', ' _altmetric_embed_init(); '),
                          textOutput('error'),
                          
+                         tags$br(),
+                         htmlOutput('daterange'),
                          tags$br(),
                          htmlOutput('totDOI'),
                          tags$br(),
@@ -164,6 +171,8 @@ ui <- fluidPage(
                          tags$br(),
                          htmlOutput('SArtPol'),
                          tags$br(),
+                         tags$head(tags$style("#daterange{font-family:Avenir;color:red}"
+                         )),
                          tags$head(tags$style("#totDOI{font-family:Avenir;font-style:italic}"
                          )),
                          tags$head(tags$style("#missingAltm{font-family:Avenir;font-style:italic}"
@@ -395,7 +404,7 @@ server <- function(input, output, session) {
       observe({
         sortInd$x <- as.character(input$sortind)
       })
-      
+    
       # when action button pressed ...
       observeEvent(input$fetchButton, {
         removeUI("div:has(>#firstOutput)")
@@ -405,10 +414,10 @@ server <- function(input, output, session) {
           ui = fluidRow(
             h3("fetching data ... (this can take some time depending on the number of articles in your sample)"),
               output$etable <- renderDataTable({
-              if(is.null(datin())){return ()}
-              results.list <<- AltFunc(datsamp=(datin()), InclCit=input$CRcitations, sortindex=sortInd$x)
-              results <<- results.list$rnkDatAsort
-            })))
+                if(is.null(datin())){return ()}
+                results.list <<- AltFunc(datsamp=(datin()), InclCit=input$CRcitations, sortindex=sortInd$x)
+                results <<- results.list$rnkDatAsort
+              })))
       }) # end observeEvent
       
       output$downloadData <- downloadHandler(
@@ -425,6 +434,13 @@ server <- function(input, output, session) {
     
     if(input$tabs == "tab2"){
       
+      date_start <- as.Date(input$timerange[1], origin = "1970-01-01")
+      date_end <- as.Date(input$timerange[2], origin = "1970-01-01")
+      results <<- results[(results$PublDate >= date_start) & (results$PublDate <= date_end), ]
+      
+      output$daterange <- renderText({
+                paste("SPECIFIED DATE RANGE: ", format(date_start, "%d %B %Y"), " to ", format(date_end, "%d %B %Y"), sep="")
+        })
       output$totDOI <- renderText({
         paste("• number of digital object identifiers (doi) processed in this sample: ", results.list$missingAltm + length(results$AltmScore), sep="")
       })
@@ -470,7 +486,11 @@ server <- function(input, output, session) {
     } # end if for tab2
     
     if(input$tabs == "tab3"){
-    
+      
+      date_start <- as.Date(input$timerange[1], origin = "1970-01-01")
+      date_end <- as.Date(input$timerange[2], origin = "1970-01-01")
+      results <<- results[(results$PublDate >= date_start) & (results$PublDate <= date_end), ]
+
       output$histplots <- renderPlot({
         input$histplots
         
@@ -510,6 +530,10 @@ server <- function(input, output, session) {
 
     if(input$tabs == "tab4"){
       
+      date_start <- as.Date(input$timerange[1], origin = "1970-01-01")
+      date_end <- as.Date(input$timerange[2], origin = "1970-01-01")
+      results <<- results[(results$PublDate >= date_start) & (results$PublDate <= date_end), ]
+      
       output$ERASCP <- renderText({
         ER <- linregER(log10(results$AltmScore), logit(results$rnkCxtPc/100))[1]
         ERf <- ifelse(ER > 100, format(ER, format="e", digits=3), round(ER, 3))
@@ -539,7 +563,7 @@ server <- function(input, output, session) {
             geom_smooth(method=lm, se=F, linetype="dashed", color="dark red") +
             labs(x=NULL, y="logit rank proportion (by age)") +
             geom_label_repel(aes(label = doi),
-                             box.padding   = 0.35, 
+                             box.padding = 0.35, 
                              point.padding = 0.5,
                              segment.color = 'grey50',
                              segment.alpha = 0.7,
@@ -562,6 +586,7 @@ server <- function(input, output, session) {
                              alpha=0.7) +
             scale_radius(c(0.45,0.45)) +
             Ctheme
+          ASAP
           
           ggarrange(ASCP, ASAP,
                     labels=c("A", "B"),
@@ -607,6 +632,10 @@ server <- function(input, output, session) {
     
     if(input$tabs == "tab5"){
       
+      date_start <- as.Date(input$timerange[1], origin = "1970-01-01")
+      date_end <- as.Date(input$timerange[2], origin = "1970-01-01")
+      results <<- results[(results$PublDate >= date_start) & (results$PublDate <= date_end), ]
+      
       output$ERASt <- renderText({
         ER <- linregER(results$PublDate, log10(results$AltmScore))[1]
         ERf <- ifelse(ER > 100, format(ER, format="e", digits=3), round(ER, 3))
@@ -626,7 +655,9 @@ server <- function(input, output, session) {
               " R<sup>2</sup>",  " = ", round(linregER(results$PublDate, results$rnkAllPc)[2], 3),sep="")
       })
 
-      if (input$CRcitations == "yes") {
+      if (input$doilabs == "yes") {
+        if (input$CRcitations == "yes") {
+          
           output$timeplots <- renderPlot({
           input$timeplots
           
@@ -642,6 +673,14 @@ server <- function(input, output, session) {
             geom_point(alpha=0.6, colour="green") +
             scale_size(range = c(0.1, 10), name="citations") +
             labs(x=NULL, y="log Altmetric score") +
+            geom_label_repel(aes(label = doi),
+                             size=3,
+                             box.padding = 0.35, 
+                             point.padding = 0.5,
+                             segment.color = 'grey50',
+                             segment.alpha = 0.7,
+                             show.legend = F,
+                             alpha=0.7) +
             Ctheme
           ASt
           
@@ -651,8 +690,15 @@ server <- function(input, output, session) {
             geom_point(alpha=0.6, colour="green", show.legend = T) +
             scale_size(range = c(0.1, 10), name="citations") +
             labs(x=NULL, y="rank % (by age)") +
+            geom_label_repel(aes(label = doi),
+                             size=3,
+                             box.padding = 0.35, 
+                             point.padding = 0.5,
+                             segment.color = 'grey50',
+                             segment.alpha = 0.7,
+                             show.legend = F,
+                             alpha=0.7) +
             Ctheme
-          CPt
           
           APt <- ggplot(data=results, aes(x=PublDate, y=rnkAllPc, size=CRcites)) + 
             geom_smooth(show.legend = F) +
@@ -660,26 +706,40 @@ server <- function(input, output, session) {
             geom_point(alpha=0.6, colour="green", show.legend = T) +
             scale_size(range = c(0.1, 10), name="citations") +
             labs(x=NULL, y="rank % (all time)") +
+            geom_label_repel(aes(label = doi),
+                             size=3,
+                             box.padding = 0.35, 
+                             point.padding = 0.5,
+                             segment.color = 'grey50',
+                             segment.alpha = 0.7,
+                             show.legend = F,
+                             alpha=0.7) +
             Ctheme
-          APt
           
           polDat <- results[which(results$polCit > 0),]
           Polt <- ggplot(data=polDat, aes(x=PublDate, y=polCit, size=CRcites)) + 
             geom_point(alpha=0.6, colour="green", show.legend = T) +
             scale_size(range = c(0.1, 10), name="citations") +
             geom_smooth(show.legend = F) +
-            labs(x="date", y="policy citations") +
+            labs(x=NULL, y="policy citations") +
+            geom_label_repel(aes(label = doi),
+                             size=3,
+                             box.padding = 0.35, 
+                             point.padding = 0.5,
+                             segment.color = 'grey50',
+                             segment.alpha = 0.7,
+                             show.legend = F,
+                             alpha=0.7) +
             Ctheme
-          Polt
           
           ggarrange(ASt, CPt, APt, Polt, 
                     labels=c("A", "B", "C", "D"),
                     ncol=1, nrow=4
                     )
         })
-      } # end if
+      } # end citations yes if
       
-      if (input$CRcitations == "no") {
+        if (input$CRcitations == "no") {
         output$timeplots <- renderPlot({
           input$timeplots
           
@@ -694,45 +754,172 @@ server <- function(input, output, session) {
             geom_smooth(method=lm, se=F, linetype="dashed", color="dark red", show.legend = F) +
             geom_point(show.legend = T) +
             labs(x=NULL, y="log Altmetric score") +
+            geom_label_repel(aes(label = doi),
+                             box.padding = 0.35, 
+                             point.padding = 0.5,
+                             segment.color = 'grey50',
+                             segment.alpha = 0.7,
+                             show.legend = F,
+                             alpha=0.7) +
             Ctheme
-          ASt
           
           CPt <- ggplot(data=results, aes(x=PublDate, y=rnkCxtPc)) + 
             geom_smooth(show.legend = F) +
             geom_smooth(method=lm, se=F, linetype="dashed", color="dark red", show.legend = F) +
             geom_point(show.legend = T) +
             labs(x=NULL, y="rank % (by age)") +
+            geom_label_repel(aes(label = doi),
+                             box.padding = 0.35, 
+                             point.padding = 0.5,
+                             segment.color = 'grey50',
+                             segment.alpha = 0.7,
+                             show.legend = F,
+                             alpha=0.7) +
             Ctheme
-          CPt
           
           APt <- ggplot(data=results, aes(x=PublDate, y=rnkAllPc)) + 
             geom_smooth(show.legend = F) +
             geom_smooth(method=lm, se=F, linetype="dashed", color="dark red", show.legend = F) +
             geom_point(show.legend = F) +
             labs(x=NULL, y="rank % (all time)") +
+            geom_label_repel(aes(label = doi),
+                             box.padding = 0.35, 
+                             point.padding = 0.5,
+                             segment.color = 'grey50',
+                             segment.alpha = 0.7,
+                             show.legend = F,
+                             alpha=0.7) +
             Ctheme
-          APt
           
           polDat <- results[which(results$polCit > 0),]
           Polt <- ggplot(data=polDat, aes(x=PublDate, y=polCit)) + 
             geom_point(show.legend = F) +
             geom_smooth(show.legend = F) +
-            labs(x="date", y="policy citations") +
+            labs(x=NULL, y="policy citations") +
+            geom_label_repel(aes(label = doi),
+                             box.padding = 0.35, 
+                             point.padding = 0.5,
+                             segment.color = 'grey50',
+                             segment.alpha = 0.7,
+                             show.legend = F,
+                             alpha=0.7) +
             Ctheme
-          Polt
           
           ggarrange(ASt, CPt, APt, Polt, 
                     labels=c("A", "B", "C", "D"),
                     ncol=1, nrow=4
           )
         })
-      } # end if
+      } # end citations no if
+      } # end doi labels if
+
+      if (input$doilabs == "no") {
+        if (input$CRcitations == "yes") {
+          
+          output$timeplots <- renderPlot({
+            input$timeplots
+            
+            Ctheme = theme(
+              axis.title.x = element_text(size = 16),
+              axis.text.x = element_text(size = 14),
+              axis.title.y = element_text(size = 16),
+              axis.text.y = element_text(size = 14))
+            
+            ASt <- ggplot(data=results, aes(x=PublDate, y=log10(AltmScore), size=CRcites)) + 
+              geom_smooth(show.legend = F) +
+              geom_smooth(method=lm, se=F, linetype="dashed", color="dark red", show.legend = F) +
+              geom_point(alpha=0.6, colour="green") +
+              scale_size(range = c(0.1, 10), name="citations") +
+              labs(x=NULL, y="log Altmetric score") +
+              Ctheme
+            
+            CPt <- ggplot(data=results, aes(x=PublDate, y=rnkCxtPc, size=CRcites)) + 
+              geom_smooth(show.legend = F) +
+              geom_smooth(method=lm, se=F, linetype="dashed", color="dark red", show.legend = F) +
+              geom_point(alpha=0.6, colour="green", show.legend = T) +
+              scale_size(range = c(0.1, 10), name="citations") +
+              labs(x=NULL, y="rank % (by age)") +
+              Ctheme
+
+            APt <- ggplot(data=results, aes(x=PublDate, y=rnkAllPc, size=CRcites)) + 
+              geom_smooth(show.legend = F) +
+              geom_smooth(method=lm, se=F, linetype="dashed", color="dark red", show.legend = F) +
+              geom_point(alpha=0.6, colour="green", show.legend = T) +
+              scale_size(range = c(0.1, 10), name="citations") +
+              labs(x=NULL, y="rank % (all time)") +
+              Ctheme
+
+            polDat <- results[which(results$polCit > 0),]
+            Polt <- ggplot(data=polDat, aes(x=PublDate, y=polCit, size=CRcites)) + 
+              geom_point(alpha=0.6, colour="green", show.legend = T) +
+              scale_size(range = c(0.1, 10), name="citations") +
+              geom_smooth(show.legend = F) +
+              labs(x=NULL, y="policy citations") +
+              Ctheme
+
+            ggarrange(ASt, CPt, APt, Polt, 
+                      labels=c("A", "B", "C", "D"),
+                      ncol=1, nrow=4
+            )
+          })
+        } # end citations yes if
+        
+        if (input$CRcitations == "no") {
+          output$timeplots <- renderPlot({
+            input$timeplots
+            
+            Ctheme = theme(
+              axis.title.x = element_text(size = 16),
+              axis.text.x = element_text(size = 14),
+              axis.title.y = element_text(size = 16),
+              axis.text.y = element_text(size = 14))
+            
+            ASt <- ggplot(data=results, aes(x=PublDate, y=log10(AltmScore))) + 
+              geom_smooth(show.legend = F) +
+              geom_smooth(method=lm, se=F, linetype="dashed", color="dark red", show.legend = F) +
+              geom_point(show.legend = T) +
+              labs(x=NULL, y="log Altmetric score") +
+              Ctheme
+
+            CPt <- ggplot(data=results, aes(x=PublDate, y=rnkCxtPc)) + 
+              geom_smooth(show.legend = F) +
+              geom_smooth(method=lm, se=F, linetype="dashed", color="dark red", show.legend = F) +
+              geom_point(show.legend = T) +
+              labs(x=NULL, y="rank % (by age)") +
+              Ctheme
+
+            APt <- ggplot(data=results, aes(x=PublDate, y=rnkAllPc)) + 
+              geom_smooth(show.legend = F) +
+              geom_smooth(method=lm, se=F, linetype="dashed", color="dark red", show.legend = F) +
+              geom_point(show.legend = F) +
+              labs(x=NULL, y="rank % (all time)") +
+              Ctheme
+
+            polDat <- results[which(results$polCit > 0),]
+            Polt <- ggplot(data=polDat, aes(x=PublDate, y=polCit)) + 
+              geom_point(show.legend = F) +
+              geom_smooth(show.legend = F) +
+              labs(x=NULL, y="policy citations") +
+              Ctheme
+
+            ggarrange(ASt, CPt, APt, Polt, 
+                      labels=c("A", "B", "C", "D"),
+                      ncol=1, nrow=4
+            )
+          })
+        } # end citations no if
+      } # end doi labels if
       
     } # end if for tab5
 
     if(input$tabs == "tab6"){
       
       if (input$CRcitations == "yes") {
+        if (input$doilabs == "no") {
+          
+        date_start <- as.Date(input$timerange[1], origin = "1970-01-01")
+        date_end <- as.Date(input$timerange[2], origin = "1970-01-01")
+        results <<- results[(results$PublDate >= date_start) & (results$PublDate <= date_end), ]
         
         output$ERASc <- renderText({
           dataERAScNA <- data.frame(log10(results$CRcitesYr), log10(results$AltmScore))
@@ -790,8 +977,100 @@ server <- function(input, output, session) {
                     labels=c("A", "B", "C"),
                     ncol=1, nrow=3
           )
-      })
-      } # end if
+        })
+        } # end no doi labels if
+        
+        if (input$doilabs == "yes") {
+          
+          date_start <- as.Date(input$timerange[1], origin = "1970-01-01")
+          date_end <- as.Date(input$timerange[2], origin = "1970-01-01")
+          results <<- results[(results$PublDate >= date_start) & (results$PublDate <= date_end), ]
+          
+          output$ERASc <- renderText({
+            dataERAScNA <- data.frame(log10(results$CRcitesYr), log10(results$AltmScore))
+            dataERAScREL <- na.omit(do.call(data.frame,lapply(dataERAScNA,function(x) replace(x, is.infinite(x), NA))))
+            ER <- linregER(dataERAScREL[,1], dataERAScREL[,2])[1]
+            ERf <- ifelse(ER > 100, format(ER, format="e", digits=3), round(ER, 3))
+            paste("A. evidence ratio = ", ERf,";",
+                  " R<sup>2</sup>",  " = ",round(linregER(dataERAScREL[,1], dataERAScREL[,2])[2], 3),sep="")
+          })
+          output$ERCPc <- renderText({
+            dataERCPcNA <- data.frame(log10(results$CRcitesYr), logit(results$rnkCxtPc/100))
+            dataERCPcREL <- na.omit(do.call(data.frame,lapply(dataERCPcNA,function(x) replace(x, is.infinite(x), NA))))
+            ER <- linregER(dataERCPcREL[,1], dataERCPcREL[,2])[1]
+            ERf <- ifelse(ER > 100, format(ER, format="e", digits=3), round(ER, 3))
+            paste("B. evidence ratio = ", ERf,";",
+                  " R<sup>2</sup>",  " = ", round(linregER(dataERCPcREL[,1], dataERCPcREL[,2])[2], 3),sep="")
+          })
+          output$ERAPc <- renderText({
+            dataERAPcNA <- data.frame(log10(results$CRcitesYr), logit(results$rnkAllPc/100))
+            dataERAPcREL <- na.omit(do.call(data.frame,lapply(dataERAPcNA,function(x) replace(x, is.infinite(x), NA))))
+            ER <- linregER(dataERAPcREL[,1], dataERAPcREL[,2])[1]
+            ERf <- ifelse(ER > 100, format(ER, format="e", digits=3), round(ER, 3))
+            paste("C. evidence ratio = ", ERf,";",
+                  " R<sup>2</sup>",  " = ", round(linregER(dataERAPcREL[,1], dataERAPcREL[,2])[2], 3),sep="")
+          })
+          
+          output$citationplots <- renderPlot({
+            input$citationplots
+            
+            Ctheme = theme(
+              axis.title.x = element_text(size = 16),
+              axis.text.x = element_text(size = 14),
+              axis.title.y = element_text(size = 16),
+              axis.text.y = element_text(size = 14))
+            
+            ASc <- ggplot(data=results, aes(x=log10(CRcitesYr), y=log10(AltmScore))) + 
+              geom_point() +
+              geom_smooth(method=lm, se=F, linetype="dashed", color="dark red") +
+              labs(x=NULL, y="log Altmetric score") +
+              geom_label_repel(aes(label = doi),
+                               box.padding = 0.35, 
+                               point.padding = 0.5,
+                               segment.color = 'grey50',
+                               segment.alpha = 0.7,
+                               show.legend = F,
+                               alpha=0.7) +
+              scale_radius(c(0.45,0.45)) +
+              Ctheme
+            
+            CPc <- ggplot(data=results, aes(x=log10(CRcitesYr), y=logit(rnkCxtPc/100))) + 
+              geom_point() +
+              geom_smooth(method=lm, se=F, linetype="dashed", color="dark red") +
+              labs(x=NULL, y="logit rank proportion (by age)") +
+              geom_label_repel(aes(label = doi),
+                               box.padding = 0.35, 
+                               point.padding = 0.5,
+                               segment.color = 'grey50',
+                               segment.alpha = 0.7,
+                               show.legend = F,
+                               alpha=0.7) +
+              scale_radius(c(0.45,0.45)) +
+              Ctheme
+            
+            APc <- ggplot(data=results, aes(x=log10(CRcitesYr), y=logit(rnkAllPc/100))) + 
+              geom_point() +
+              geom_smooth(method=lm, se=F, linetype="dashed", color="dark red") +
+              labs(x="log Crossref citations/year", y="logit rank proportion (all time)") +
+              geom_label_repel(aes(label = doi),
+                               box.padding = 0.35, 
+                               point.padding = 0.5,
+                               segment.color = 'grey50',
+                               segment.alpha = 0.7,
+                               show.legend = F,
+                               alpha=0.7) +
+              scale_radius(c(0.45,0.45)) +
+              Ctheme
+            
+            ggarrange(ASc, CPc, APc,
+                      labels=c("A", "B", "C"),
+                      ncol=1, nrow=3
+            )
+          })
+        } # end yes doi labels if
+        
+      } # end citations if
+      
     } # end if for tab6
     
   }) # end tab Events
