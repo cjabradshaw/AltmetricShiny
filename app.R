@@ -480,7 +480,7 @@ server <- function(input, output, session) {
         paste("• number articles in this sample cited in policy documents: ", length(which(results$polCit > 0)), sep="")
       })
       output$SArtPol <- renderText({
-        paste("• total number of policy-document citations in this sample: ", sum(results$polCit), sep="")
+        paste("• total number of policy-document citations in this sample: ", sum(results$polCit, na.rm=T), sep="")
       })
 
     } # end if for tab2
@@ -503,22 +503,22 @@ server <- function(input, output, session) {
         
         AS <- ggplot(data=results, aes(log10(AltmScore))) + 
           geom_histogram(bins=round(dim(results)[1]/5),col="grey",fill="black",alpha=0.5) +
-          geom_vline(xintercept=median(log10(results$AltmScore)), linetype=2, color="red", size=1) +
-          labs(title=paste("median = ", round(10^median(log10(results$AltmScore)),1),sep="")) +
+          geom_vline(xintercept=median(log10(results$AltmScore), na.rm=T), linetype=2, color="red", size=1) +
+          labs(title=paste("median = ", round(10^median(log10(results$AltmScore), na.rm=T),1),sep="")) +
           labs(x="log Altmetric score", y="frequency") +
           Ctheme
           
         CP <- ggplot(data=results, aes((rnkCxtPc))) + 
           geom_histogram(bins=round(dim(results)[1]/5),col="grey",fill="black",alpha=0.5) +
-          geom_vline(xintercept=median((results$rnkCxtPc)), linetype=2, color="red", size=1) +
-          labs(title=paste("median = top ", round(median((results$rnkCxtPc)),1),"%",sep="")) +
+          geom_vline(xintercept=median((results$rnkCxtPc), na.rm=T), linetype=2, color="red", size=1) +
+          labs(title=paste("median = top ", round(median((results$rnkCxtPc), na.rm=T),1),"%",sep="")) +
           labs(x="rank % (by age)", y=NULL) +
           Ctheme
         
         AP <- ggplot(data=results, aes((rnkAllPc))) + 
           geom_histogram(bins=round(dim(results)[1]/5),col="grey",fill="black",alpha=0.5) +
-          geom_vline(xintercept=median((results$rnkAllPc)), linetype=2, color="red", size=1) +
-          labs(title=paste("median = top ", round(median((results$rnkAllPc)),1),"%",sep="")) +
+          geom_vline(xintercept=median((results$rnkAllPc), na.rm=T), linetype=2, color="red", size=1) +
+          labs(title=paste("median = top ", round(median((results$rnkAllPc),na.rm=T),1),"%",sep="")) +
           labs(x="rank % (all time)", y=NULL) +
           Ctheme
         
