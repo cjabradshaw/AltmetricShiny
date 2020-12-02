@@ -7,6 +7,7 @@ rm(list = ls())
 
 # load libraries
 library(shiny)
+library(shinybusy)
 library(rAltmetric)
 library(magrittr)
 library(purrr)
@@ -121,10 +122,12 @@ ui <- fluidPage(
                            fluidRow(
                              tags$div(id = "firstOutput", 
                                       h3("input data"),
+                                      add_busy_spinner(spin="fading-circle", color="#17ca3a", timeout=500, position="bottom-right", height = 250, width = 250),
                                       dataTableOutput("table1")) 
                            ),
                            
                            fluidRow(
+                             add_busy_spinner(spin="fading-circle", color="#17ca3a", timeout=500, position="bottom-right", height = 250, width = 250),
                              tags$div(id = "placeholder") # the dynamic UI will be inserted relative to this placeholder
                            ),
 
@@ -141,6 +144,7 @@ ui <- fluidPage(
                        mainPanel(
                          
                          tags$script(type='text/javascript', ' _altmetric_embed_init(); '),
+                         add_busy_spinner(spin="fading-circle", color="#17ca3a", timeout=500, position="bottom-right", height = 250, width = 250),
                          textOutput('error'),
                          
                          tags$br(),
@@ -223,6 +227,7 @@ ui <- fluidPage(
                        mainPanel(
                          tags$br(),
                          tags$p(style="font-family:Avenir","In each panel below, the median metric is indicated in the panel's title and also shown as a red, dashed vertical line."),
+                         add_busy_spinner(spin="fading-circle", color="#17ca3a", timeout=500, position="bottom-right", height = 250, width = 250),
                          plotOutput(width="150%","histplots"),
                          tags$br()
                        )
@@ -250,6 +255,7 @@ ui <- fluidPage(
                          tags$p(style="font-family:Avenir","In each panel below, the loess trend is indicated by the blue line, and the linear trend by a
                                 red dashed line."),
                          tags$br(),
+                         add_busy_spinner(spin="fading-circle", color="#17ca3a", timeout=500, position="bottom-right", height = 250, width = 250),
                          plotOutput(width="150%", height="1200px", "interplots")
                        )
               ), # end tab4
@@ -291,6 +297,7 @@ ui <- fluidPage(
                          tags$p(style="font-family:Avenir","In the panels below, the loess trend is indicated by the blue line, and the linear trend by a
                                 red dashed line."),
                          tags$br(),
+                         add_busy_spinner(spin="fading-circle", color="#17ca3a", timeout=500, position="bottom-right", height = 250, width = 250),
                          plotOutput(height="1600px", width="150%", "timeplots")
                        )
               ), # end tab5
@@ -329,6 +336,7 @@ ui <- fluidPage(
                          tags$br(),
                          tags$p(style="font-family:Avenir","In each panel below, the linear trend is indicated by a red dashed line."),
                          tags$br(),
+                         add_busy_spinner(spin="fading-circle", color="#17ca3a", timeout=500, position="bottom-right", height = 250, width = 250),
                          plotOutput(height="1600px", width="150%", "citationplots")
                        )
               ), # end tab6
@@ -380,7 +388,7 @@ ui <- fluidPage(
 
 server <- function(input, output, session) {
   
-  observeEvent(input$tabs, {
+  observeEvent(input$file1, {
     
     if(input$tabs == "tab1"){
       
@@ -432,6 +440,10 @@ server <- function(input, output, session) {
       )
     } # end if for tab1
     
+  }) # end Events
+
+    observeEvent(input$tabs, {
+      
     if(input$tabs == "tab2"){
       
       date_start <- as.Date(input$timerange[1], origin = "1970-01-01")
@@ -1073,7 +1085,7 @@ server <- function(input, output, session) {
       
     } # end if for tab6
     
-  }) # end tab Events
+  }) # end Events
   
   session$onSessionEnded(stopApp)
   
