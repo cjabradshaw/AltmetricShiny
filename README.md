@@ -1,4 +1,6 @@
-# AltmetricShiny
+# Altmetric Shiny
+
+<img align="right" src="www/altmetriclogo.png" alt="Altmetric" width="200" style="margin-top: 20px">
 
 ## Preamble
 Ever wanted to collate the <a href="https://www.altmetric.com/about-altmetrics/what-are-altmetrics/">Altmetric data</a> for your articles, but couldn't be bothered to do it manually? I've made the process substantially easier by designing this Shiny <a href="https://cjabradshaw.shinyapps.io/AltmetricShiny/">app</a>. All you need to do is collate a list of '<a href="https://www.doi.org/">digital object identifiers</a>' ('doi') for the articles of interest, and the <a href="https://cjabradshaw.shinyapps.io/AltmetricShiny/">app</a> does it all for you. The app also produces outputs that plot the distribution of not only the relevant Altmetric scores, but also the rank percentiles for each article relative to articles of the same age in the journal, and to all articles in the journal with Altmetric data.
