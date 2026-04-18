@@ -68,6 +68,7 @@ ui <- fluidPage(
            although you can specify the delimit character (", tags$em("comma"),", ", tags$em("space"),", ", tags$em("tab"),").")),
            tags$li(tags$p(style="font-family:Avenir", "Load your delimited text file in the app by clicking the",tags$i(class="fas fa-file-import"),
            tags$strong("choose file"), "button.")),
+           tags$li(tags$p(style="font-family:Avenir", "Enter your", tags$i(class="fas fa-key"), tags$strong("Altmetric API key"), "if the app server is not already configured with one.")),
            tags$li(tags$p(style="font-family:Avenir", "Select whether you want to include Crossref citation data (",
            tags$i(class="fas fa-bookmark"), tags$strong("include Crossref citation data?"), "). Downloading these data will increase processing time.")),
            tags$a(href="https://globalecologyflinders.com/", tags$img(height = 100, src = "GEL Logo Kaurna transparent.png", style="float:right",
@@ -93,11 +94,14 @@ ui <- fluidPage(
                              fileInput("file1", label=tags$p(tags$i(class='fas fa-file-import'),"choose delimited file with doi data (1 column)"),
                                        multiple=F, buttonLabel="choose file", placeholder="no file selected"),
                              tags$hr(),
-                             radioButtons("sep",label=tags$p(tags$i(class="fas fa-file-csv"),"separator"),choices=c(comma=',',space="",tab="\t"), inline=T),
-                             checkboxInput("header1", "header?", TRUE),
-                             tags$hr(),
-                             radioButtons("CRcitations", label=tags$p(tags$i(class='fas fa-bookmark'), "include Crossref citation data?"), inline=T,
-                                          choiceNames = list((icon("fas fa-thumbs-down")), (icon("fas fa-thumbs-up"))), choiceValues = list("no","yes")),
+                              radioButtons("sep",label=tags$p(tags$i(class="fas fa-file-csv"),"separator"),choices=c(comma=',',space="",tab="\t"), inline=T),
+                              checkboxInput("header1", "header?", TRUE),
+                              tags$hr(),
+                              passwordInput("altmetricKey", label=tags$p(tags$i(class='fas fa-key'), "Altmetric API key (leave blank if configured on the server)")),
+                              tags$p(style="font-family:Avenir;font-size:90%", "Altmetric's Details API now requires an API key."),
+                              tags$hr(),
+                              radioButtons("CRcitations", label=tags$p(tags$i(class='fas fa-bookmark'), "include Crossref citation data?"), inline=T,
+                                           choiceNames = list((icon("fas fa-thumbs-down")), (icon("fas fa-thumbs-up"))), choiceValues = list("no","yes")),
                              tags$hr(),
                              radioButtons("doilabs", label=tags$p(tags$i(class='fas fa-tag'), "include doi labels on plots?"), inline=T,
                                           choiceNames = list((icon("fas fa-thumbs-down")), (icon("fas fa-thumbs-up"))), choiceValues = list("no","yes")),
@@ -423,7 +427,12 @@ server <- function(input, output, session) {
             h3("fetching data ... (this can take some time depending on the number of articles in your sample)"),
               output$etable <- renderDataTable({
                 if(is.null(datin())){return ()}
-                results.list <<- AltFunc(datsamp=(datin()), InclCit=input$CRcitations, sortindex=sortInd$x)
+                results.list <<- AltFunc(
+                  datsamp = datin(),
+                  InclCit = input$CRcitations,
+                  sortindex = sortInd$x,
+                  altmetric_key = input$altmetricKey
+                )
                 results <<- results.list$rnkDatAsort
               })))
       }) # end observeEvent

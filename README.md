@@ -12,6 +12,7 @@ This Github repository provides all the 'under-the-bonnet' code for the app.
 ## Instructions
 - Create a delimited text file of <strong>exactly the same format</strong> as the example file, although you can specify the delimit character (comma, space, tab).
 - Load your delimited text file in the app by clicking the <strong>choose file</strong> button.
+- Provide an Altmetric API key in the app, or set `ALTMETRIC_API_KEY` (or `ALTMETRIC_KEY`) in the environment before launching the app.
 - Select whether you want to include Crossref citation data (<strong>include Crossref citation data?</strong>). Downloading these data will increase processing time.
 - Choose how you want the output file to be sorted by selecting one of the four choices in the drop-down menu: <em>Altmetric score</em>, <em>context rank percentile</em>, <em>all-time rank percentile</em>, or <em>publication date</em>.
 - Click the <strong>fetch data</strong> button.

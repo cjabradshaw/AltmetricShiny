@@ -1,19 +1,32 @@
-AltFunc <- function(datsamp, InclCit='no', sortindex='as') {
+AltFunc <- function(datsamp, InclCit='no', sortindex='as', altmetric_key = NULL) {
   
   # make list
   doiList <- lapply(datsamp[,1], trimws, which="both")
+  altmetric_key <- resolve_altmetric_api_key(altmetric_key)
   
   # ignore doi with no Altmetric data
 
   # request Altmetrics data
-  requests <- map(doiList, alm)
+  requests <- map(doiList, alm, apikey = altmetric_key)
   
   # only doi with data
   results1 <- requests %>%  
     map("result") %>% 
     compact(.) %>% 
     modify_depth(1, altmetric_data)
-  
+
+  if (!length(results1)) {
+    request_errors <- requests %>%
+      map("error") %>%
+      compact(.)
+
+    if (length(request_errors)) {
+      stop(conditionMessage(request_errors[[1]]), call. = FALSE)
+    }
+
+    stop("No Altmetric data could be retrieved for the supplied DOIs.", call. = FALSE)
+  }
+   
   results <- bind_rows(results1)
   
   # missing Altmetric data

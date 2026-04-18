@@ -1,1 +1,1 @@
-alm <- function(x)  safe_altmetrics(doi = x)
+alm <- function(x, apikey = NULL) safe_altmetrics(doi = x, apikey = apikey)
